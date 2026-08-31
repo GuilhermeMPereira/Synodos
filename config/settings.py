@@ -52,8 +52,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 COMPETENCIA_INICIO = os.getenv("COMPETENCIA_INICIO", "202301")
 COMPETENCIA_FIM = os.getenv("COMPETENCIA_FIM", "202412")
 
-# UFs priorizadas no piloto (Sudeste + Sul). Use "TODAS" para o Brasil inteiro.
-UFS_PILOTO = os.getenv("UFS_PILOTO", "SP,RJ,MG,ES,PR,SC,RS").split(",")
+# UFs analisadas. "TODAS" cobre os 27 estados; ou liste as siglas.
+UFS_PILOTO = os.getenv("UFS_PILOTO", "TODAS").split(",")
 
 # Capitulo V do CID-10 (transtornos mentais e comportamentais)
 PREFIXO_CID_SAUDE_MENTAL = "F"

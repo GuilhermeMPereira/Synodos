@@ -1,21 +1,49 @@
 cid10;grupo_cid;descricao;descricao_curta;gravidade_relativa;permanencia_esperada_dias
+F00;F00-F09;Demência na doença de Alzheimer;Demência (Alzheimer);alta;19
+F01;F00-F09;Demência vascular;Demência vascular;alta;21
+F03;F00-F09;Demência não especificada;Demência não especificada;alta;20
+F05;F00-F09;Delirium não induzido por álcool ou outras substâncias;Delirium;alta;12
+F06;F00-F09;Outros transtornos mentais devidos a lesão cerebral;Transtorno por lesão cerebral;media;16
+F09;F00-F09;Transtorno mental orgânico não especificado;Transtorno orgânico;media;15
 F10;F10-F19;Transtornos mentais e comportamentais devidos ao uso de álcool;Uso de álcool;alta;14
 F11;F10-F19;Transtornos mentais e comportamentais devidos ao uso de opiáceos;Uso de opiáceos;alta;12
+F12;F10-F19;Transtornos mentais e comportamentais devidos ao uso de canabinoides;Uso de canabinoides;media;11
+F13;F10-F19;Transtornos mentais devidos ao uso de sedativos ou hipnóticos;Uso de sedativos;media;12
 F14;F10-F19;Transtornos mentais e comportamentais devidos ao uso de cocaína;Uso de cocaína;alta;13
 F15;F10-F19;Transtornos mentais devidos ao uso de outros estimulantes;Outros estimulantes;media;10
+F16;F10-F19;Transtornos mentais e comportamentais devidos ao uso de alucinógenos;Uso de alucinógenos;media;9
+F17;F10-F19;Transtornos mentais e comportamentais devidos ao uso de tabaco;Uso de tabaco;baixa;7
+F18;F10-F19;Transtornos mentais devidos ao uso de solventes voláteis;Uso de solventes;media;12
 F19;F10-F19;Transtornos mentais devidos ao uso de múltiplas drogas;Múltiplas drogas;alta;16
 F20;F20-F29;Esquizofrenia;Esquizofrenia;alta;28
+F21;F20-F29;Transtorno esquizotípico;Transtorno esquizotípico;alta;20
+F22;F20-F29;Transtornos delirantes persistentes;Transtorno delirante;alta;24
 F23;F20-F29;Transtornos psicóticos agudos e transitórios;Psicose aguda;alta;18
 F25;F20-F29;Transtornos esquizoafetivos;Esquizoafetivo;alta;24
+F28;F20-F29;Outros transtornos psicóticos não orgânicos;Outra psicose;alta;19
 F29;F20-F29;Psicose não orgânica não especificada;Psicose não especificada;alta;20
 F30;F30-F39;Episódio maníaco;Episódio maníaco;alta;22
 F31;F30-F39;Transtorno afetivo bipolar;Transtorno bipolar;alta;21
 F32;F30-F39;Episódios depressivos;Episódio depressivo;media;12
 F33;F30-F39;Transtorno depressivo recorrente;Depressão recorrente;media;14
+F34;F30-F39;Transtornos de humor persistentes;Humor persistente;media;13
+F39;F30-F39;Transtorno do humor não especificado;Transtorno do humor;media;14
+F40;F40-F48;Transtornos fóbico-ansiosos;Transtorno fóbico;baixa;8
 F41;F40-F48;Outros transtornos ansiosos;Transtorno de ansiedade;baixa;7
+F42;F40-F48;Transtorno obsessivo-compulsivo;Obsessivo-compulsivo;media;12
 F43;F40-F48;Reações ao estresse grave e transtornos de adaptação;Estresse e adaptação;baixa;6
+F44;F40-F48;Transtornos dissociativos ou conversivos;Transtorno dissociativo;media;9
+F45;F40-F48;Transtornos somatoformes;Transtorno somatoforme;baixa;8
+F50;F50-F59;Transtornos da alimentação;Transtorno alimentar;alta;25
+F51;F50-F59;Transtornos do sono não orgânicos;Transtorno do sono;baixa;7
 F60;F60-F69;Transtornos específicos da personalidade;Transtorno de personalidade;media;11
+F61;F60-F69;Transtornos mistos da personalidade;Personalidade mista;media;11
+F63;F60-F69;Transtornos dos hábitos e dos impulsos;Hábitos e impulsos;media;10
 F70;F70-F79;Retardo mental leve;Retardo mental leve;baixa;9
+F71;F70-F79;Retardo mental moderado;Retardo mental moderado;media;12
+F72;F70-F79;Retardo mental grave;Retardo mental grave;alta;16
+F79;F70-F79;Retardo mental não especificado;Retardo mental;media;11
 F84;F80-F89;Transtornos globais do desenvolvimento;Desenvolvimento global;media;10
 F90;F90-F98;Transtornos hipercinéticos;Transtorno hipercinético;baixa;8
-F00;F00-F09;Demência na doença de Alzheimer;Demência (Alzheimer);alta;19
+F91;F90-F98;Distúrbios de conduta;Distúrbio de conduta;media;10
+F92;F90-F98;Transtornos mistos de conduta e das emoções;Conduta e emoções;media;9

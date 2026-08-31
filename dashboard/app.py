@@ -213,6 +213,17 @@ def layout_grafico(fig, altura: int = 360, legenda: bool = False):
     return fig
 
 
+def altura_barras(n: int, minimo: int = 340, por_barra: int = 20) -> int:
+    """
+    Altura proporcional ao numero de barras.
+
+    Com os 27 estados na tela, uma altura fixa esmaga os rotulos. Cada
+    categoria ganha um espaco proprio, com um piso para os recortes de
+    poucos estados.
+    """
+    return max(minimo, n * por_barra + 60)
+
+
 def folga_rotulos(fig, valores, fator: float = 1.22, eixo: str = "x"):
     """
     Reserva espaco para os rotulos escritos fora das barras.
@@ -287,12 +298,9 @@ if len(f) < len(df):
 origem = settings.RAW_DIR / "_ORIGEM_AMOSTRA.txt"
 if origem.exists():
     st.sidebar.divider()
-    st.sidebar.warning(
-        "**Modo amostra**\n\nOs dados exibidos têm a mesma estrutura do "
-        "SIH/SUS e foram calibrados por taxas públicas reais, mas os "
-        "registros individuais são sintéticos. Para dados oficiais, rode "
-        "`python -m src.ingestao.ingest_sih`.",
-        icon="⚠️",
+    st.sidebar.caption(
+        "**Amostra de demonstração** — mesma estrutura do SIH/SUS, "
+        "calibrada por taxas públicas reais. Detalhes no rodapé."
     )
 
 if f.empty:
@@ -547,7 +555,9 @@ with abas[1]:
                              showgrid=False)
             fig.update_yaxes(title_text="", showgrid=False)
             folga_rotulos(fig, taxa["por_10k"], 1.18)
-            st.plotly_chart(layout_grafico(fig, 380), width="stretch")
+            st.plotly_chart(
+                layout_grafico(fig, altura_barras(len(taxa))), width="stretch"
+            )
 
     with dir_:
         with st.container(border=True):
@@ -569,7 +579,9 @@ with abas[1]:
             fig.update_xaxes(title_text="", showticklabels=False,
                              showgrid=False, range=[0, 132])
             fig.update_yaxes(title_text="", showgrid=False)
-            st.plotly_chart(layout_grafico(fig, 380), width="stretch")
+            st.plotly_chart(
+                layout_grafico(fig, altura_barras(len(p))), width="stretch"
+            )
 
     st.write("")
     with st.container(border=True):
@@ -635,7 +647,9 @@ with abas[2]:
                              showgrid=False)
             fig.update_yaxes(title_text="", showgrid=False)
             folga_rotulos(fig, o["taxa_ocupacao_pct"], 1.18)
-            st.plotly_chart(layout_grafico(fig, 360), width="stretch")
+            st.plotly_chart(
+                layout_grafico(fig, altura_barras(len(o))), width="stretch"
+            )
 
     with dir_:
         with st.container(border=True):
@@ -658,7 +672,9 @@ with abas[2]:
                              showgrid=False)
             fig.update_yaxes(title_text="", showgrid=False)
             folga_rotulos(fig, o["leitos_por_10k_hab"], 1.22)
-            st.plotly_chart(layout_grafico(fig, 360), width="stretch")
+            st.plotly_chart(
+                layout_grafico(fig, altura_barras(len(o))), width="stretch"
+            )
 
     st.write("")
     with st.container(border=True):
@@ -766,3 +782,26 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True,
 )
+
+if origem.exists():
+    with st.expander("Sobre os dados exibidos nesta demonstração"):
+        st.markdown(
+            """
+Este painel está rodando com uma **amostra de demonstração**, gerada com a
+mesma estrutura de colunas dos extratores oficiais.
+
+**O que é real:** a população por UF (Censo IBGE 2022), os códigos e
+descrições do CID-10 Capítulo V, a divisão territorial oficial, e a
+calibragem das taxas — internações por 10 mil habitantes, densidade de
+leitos, permanência média e ocupação estão todas dentro das faixas
+publicadas para o SUS.
+
+**O que é sintético:** os registros individuais de AIH. Nenhum dado de
+paciente é utilizado — o SIH/SUS é público e já anonimizado na origem.
+
+**Por que existe:** o FTP do DATASUS é instável, e sem esse modo qualquer
+pessoa que clonasse o repositório ficaria travada. Para carregar os dados
+oficiais, basta rodar `python -m src.ingestao.ingest_sih`, que baixa as
+competências reais do DATASUS — o restante do pipeline é idêntico.
+            """
+        )

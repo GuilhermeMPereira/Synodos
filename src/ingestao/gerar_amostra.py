@@ -49,28 +49,47 @@ log = logging.getLogger("gerar_amostra")
 # Taxa nacional de internacao psiquiatrica por 10 mil habitantes/ano
 TAXA_BASE_10K_ANO = 9.6
 
-# Distribuicao proporcional dos diagnosticos principais (Capitulo V do CID-10)
+# Distribuicao proporcional dos diagnosticos principais.
+#
+# Cobre os 10 blocos do Capitulo V do CID-10, com pesos por bloco proximos
+# aos publicados para internacoes psiquiatricas no SUS:
+#   F10-F19 substancias psicoativas .... 33%
+#   F20-F29 esquizofrenia e psicoses ... 30%
+#   F30-F39 transtornos do humor ....... 24%
+#   F40-F48 neuroticos e estresse ......  5%
+#   F00-F09 organicos ..................  3%
+#   F60-F69 personalidade ..............  2,2%
+#   F70-F79 retardo mental .............  1%
+#   F90-F98 infancia e adolescencia ....  0,8%
+#   F50-F59 sindromes comportamentais ..  0,6%
+#   F80-F89 desenvolvimento ............  0,4%
 DISTRIBUICAO_CID = {
-    "F10": 0.185,  # alcool - principal causa de internacao psiquiatrica
-    "F19": 0.075,  # multiplas drogas
-    "F14": 0.040,  # cocaina/crack
-    "F11": 0.015,
-    "F15": 0.015,
-    "F20": 0.190,  # esquizofrenia - maior tempo de permanencia
-    "F23": 0.035,
-    "F25": 0.030,
-    "F29": 0.040,
-    "F30": 0.025,
-    "F31": 0.115,  # transtorno afetivo bipolar
-    "F32": 0.080,
-    "F33": 0.055,
-    "F41": 0.030,
-    "F43": 0.025,
-    "F60": 0.020,
-    "F70": 0.010,
-    "F84": 0.005,
-    "F90": 0.005,
-    "F00": 0.005,
+    # F00-F09 - organicos
+    "F00": 0.009, "F01": 0.007, "F03": 0.006,
+    "F05": 0.005, "F06": 0.002, "F09": 0.001,
+    # F10-F19 - substancias psicoativas
+    "F10": 0.180, "F19": 0.070, "F14": 0.036, "F12": 0.014,
+    "F13": 0.009, "F11": 0.008, "F15": 0.007, "F17": 0.003,
+    "F16": 0.002, "F18": 0.001,
+    # F20-F29 - esquizofrenia e outras psicoses
+    "F20": 0.190, "F29": 0.038, "F23": 0.030, "F25": 0.026,
+    "F22": 0.008, "F28": 0.005, "F21": 0.003,
+    # F30-F39 - transtornos do humor
+    "F31": 0.105, "F32": 0.070, "F33": 0.045,
+    "F30": 0.014, "F34": 0.004, "F39": 0.002,
+    # F40-F48 - neuroticos, estresse e somatoformes
+    "F41": 0.020, "F43": 0.016, "F42": 0.006,
+    "F40": 0.004, "F44": 0.002, "F45": 0.002,
+    # F50-F59 - sindromes comportamentais
+    "F50": 0.005, "F51": 0.001,
+    # F60-F69 - personalidade
+    "F60": 0.015, "F61": 0.004, "F63": 0.003,
+    # F70-F79 - retardo mental
+    "F70": 0.005, "F71": 0.003, "F72": 0.0015, "F79": 0.0005,
+    # F80-F89 - desenvolvimento
+    "F84": 0.004,
+    # F90-F98 - infancia e adolescencia
+    "F90": 0.004, "F91": 0.003, "F92": 0.001,
 }
 
 # Perfil da Rede de Atencao Psicossocial (RAPS).
@@ -118,9 +137,35 @@ def gerar_estabelecimentos(
         for tipo, descricao, hab_por_unidade, prob_leito, faixa in (
             PERFIL_UNIDADES
         ):
-            # Quantidade de unidades proporcional a populacao da UF
-            total = max(1, int(round(pop / hab_por_unidade)))
+            # Quantidade de unidades proporcional a populacao da UF.
+            #
+            # O arredondamento e probabilistico de proposito. Forcar um
+            # minimo de uma unidade por tipo distorceria as UFs pequenas:
+            # Roraima tem 637 mil habitantes, e um hospital psiquiatrico
+            # especializado (1 a cada 5 milhoes de habitantes) sozinho ja
+            # colocaria a densidade de leitos acima de 1,5 por 10 mil - o
+            # dobro da media nacional. Aqui, uma UF com 0,13 do criterio
+            # tem 13% de chance de receber a unidade.
+            esperado = pop / hab_por_unidade
+            total = int(esperado)
+            if rng.random() < (esperado - total):
+                total += 1
+
+            # Todo estado brasileiro tem pelo menos um CAPS e uma UBS.
+            if tipo in ("70", "02"):
+                total = max(1, total)
+
             lo, hi = faixa
+
+            # O porte da unidade acompanha o porte do estado. Um hospital
+            # psiquiatrico em Roraima nao tem o mesmo numero de leitos que
+            # um em Sao Paulo; sem essa escala, uma unica unidade grande
+            # sorteada para uma UF pequena inflava a densidade de leitos
+            # para varias vezes a media nacional. Aplicado so as unidades
+            # de grande porte (40 leitos ou mais).
+            if hi >= 40:
+                escala = min(1.0, max(0.30, pop / hab_por_unidade))
+                lo, hi = max(6, int(lo * escala)), max(10, int(hi * escala))
 
             for _ in range(total):
                 tem_leito = hi > 0 and rng.random() < prob_leito
