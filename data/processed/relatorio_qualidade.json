@@ -1,0 +1,94 @@
+{
+  "datasets": [
+    {
+      "dataset": "sih_internacoes",
+      "registros_entrada": 234804,
+      "registros_saida": 234803,
+      "taxa_aproveitamento_pct": 100.0,
+      "regras": [
+        {
+          "regra": "deduplicacao_por_nu_aih",
+          "registros_removidos": 1,
+          "pct_do_total": 0.0,
+          "detalhe": "AIH e a chave natural da internacao"
+        },
+        {
+          "regra": "cid_principal_capitulo_v",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "escopo do projeto: transtornos mentais e comportamentais"
+        },
+        {
+          "regra": "permanencia_fora_da_faixa",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "0 a 365 dias"
+        },
+        {
+          "regra": "idade_fora_da_faixa",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "0 a 110 anos"
+        },
+        {
+          "regra": "cnes_ausente",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "sem CNES nao ha juncao com a rede"
+        },
+        {
+          "regra": "data_saida_anterior_a_internacao",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": ""
+        }
+      ]
+    },
+    {
+      "dataset": "cnes_estabelecimentos",
+      "registros_entrada": 5606,
+      "registros_saida": 5606,
+      "taxa_aproveitamento_pct": 100.0,
+      "regras": [
+        {
+          "regra": "deduplicacao_por_cnes",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "mantem o cadastro mais recente"
+        },
+        {
+          "regra": "cnes_invalido",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": ""
+        },
+        {
+          "regra": "leitos_zerados_mantidos",
+          "registros_removidos": 0,
+          "pct_do_total": 0.0,
+          "detalhe": "4711 unidades ambulatoriais sem leito - mantidas de proposito"
+        }
+      ]
+    }
+  ],
+  "analise_outliers": {
+    "qt_dias_permanencia": {
+      "q1": 9.0,
+      "q3": 23.0,
+      "iqr": 14.0,
+      "limite_inferior": -12.0,
+      "limite_superior": 44.0,
+      "qt_outliers": 9672,
+      "pct_outliers": 4.12
+    },
+    "vl_total_aih": {
+      "q1": 436.415,
+      "q3": 1774.8049999999998,
+      "iqr": 1338.3899999999999,
+      "limite_inferior": -1571.1699999999998,
+      "limite_superior": 3782.3899999999994,
+      "qt_outliers": 15176,
+      "pct_outliers": 6.46
+    }
+  }
+}

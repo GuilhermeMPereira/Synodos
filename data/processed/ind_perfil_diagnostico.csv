@@ -1,0 +1,21 @@
+﻿cid_grupo;descricao;descricao_curta;grupo_cid;qt_internacoes;permanencia_media;permanencia_total;custo_total;idade_media;obitos;pct_internacoes;pct_dias_leito;indice_carga_leito
+F20;Esquizofrenia;Esquizofrenia;F20-F29;44465;28.0;1247015;97814254.37;38.6;495;18.94;30.05;1.59
+F10;Transtornos mentais e comportamentais devidos ao uso de álcool;Uso de álcool;F10-F19;43206;14.0;603227;47013866.63;38.6;446;18.4;14.54;0.79
+F31;Transtorno afetivo bipolar;Transtorno bipolar;F30-F39;27211;21.0;570640;44417306.64;38.7;282;11.59;13.75;1.19
+F32;Episódios depressivos;Episódio depressivo;F30-F39;18812;12.0;226439;17743086.62;38.5;214;8.01;5.46;0.68
+F19;Transtornos mentais devidos ao uso de múltiplas drogas;Múltiplas drogas;F10-F19;17561;16.1;283474;21989570.24;38.6;196;7.48;6.83;0.91
+F33;Transtorno depressivo recorrente;Depressão recorrente;F30-F39;12916;14.0;180538;14044144.66;38.8;131;5.5;4.35;0.79
+F14;Transtornos mentais e comportamentais devidos ao uso de cocaína;Uso de cocaína;F10-F19;9461;13.0;123372;9494850.35;38.8;104;4.03;2.97;0.74
+F29;Psicose não orgânica não especificada;Psicose não especificada;F20-F29;9405;20.1;188902;14881954.92;38.7;100;4.01;4.55;1.13
+F23;Transtornos psicóticos agudos e transitórios;Psicose aguda;F20-F29;8220;18.0;147774;11579735.47;38.9;94;3.5;3.56;1.02
+F41;Outros transtornos ansiosos;Transtorno de ansiedade;F40-F48;7085;7.0;49269;3864817.8;38.7;86;3.02;1.19;0.39
+F25;Transtornos esquizoafetivos;Esquizoafetivo;F20-F29;7050;23.9;168795;13366506.28;38.8;80;3.0;4.07;1.36
+F30;Episódio maníaco;Episódio maníaco;F30-F39;5943;21.9;130263;10093832.04;38.3;63;2.53;3.14;1.24
+F43;Reações ao estresse grave e transtornos de adaptação;Estresse e adaptação;F40-F48;5855;6.1;35474;2759875.73;38.8;63;2.49;0.85;0.34
+F60;Transtornos específicos da personalidade;Transtorno de personalidade;F60-F69;4773;10.9;51964;4003061.08;38.8;65;2.03;1.25;0.62
+F15;Transtornos mentais devidos ao uso de outros estimulantes;Outros estimulantes;F10-F19;3536;10.0;35326;2746690.59;38.8;57;1.51;0.85;0.56
+F11;Transtornos mentais e comportamentais devidos ao uso de opiáceos;Uso de opiáceos;F10-F19;3488;12.1;42174;3301867.93;38.2;25;1.49;1.02;0.68
+F70;Retardo mental leve;Retardo mental leve;F70-F79;2299;9.2;21103;1611822.71;38.5;28;0.98;0.51;0.52
+F00;Demência na doença de Alzheimer;Demência (Alzheimer);F00-F09;1187;19.5;23099;1775440.82;38.7;9;0.51;0.56;1.1
+F84;Transtornos globais do desenvolvimento;Desenvolvimento global;F80-F89;1177;10.0;11776;908300.46;38.9;14;0.5;0.28;0.56
+F90;Transtornos hipercinéticos;Transtorno hipercinético;F90-F98;1153;8.0;9247;717490.79;38.8;13;0.49;0.22;0.45

@@ -1,0 +1,43 @@
+# ===========================================================================
+# Synodos - dependencias
+# Instalacao: pip install -r requirements.txt
+# ===========================================================================
+
+# --- nucleo de dados -------------------------------------------------------
+pandas>=2.1.0
+numpy>=1.26.0
+pyarrow>=14.0.0
+
+# --- ingestao de fontes publicas ------------------------------------------
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# --- consulta SQL local (modo de demonstracao do Select AI) ---------------
+duckdb>=0.10.0
+
+# --- analise e modelos -----------------------------------------------------
+scikit-learn>=1.3.0
+scipy>=1.11.0
+statsmodels>=0.14.0
+
+# --- visualizacao ----------------------------------------------------------
+matplotlib>=3.8.0
+plotly>=5.18.0
+streamlit>=1.40.0
+
+# --- planilhas -------------------------------------------------------------
+openpyxl>=3.1.0
+
+# ===========================================================================
+# OPCIONAIS - instale sob demanda, nao sao necessarios para rodar o painel
+# ===========================================================================
+# Extracao oficial do SIH/SUS no FTP do DATASUS (src/ingestao/ingest_sih.py).
+# Fica fora da lista principal porque tem dependencias de sistema que
+# quebram builds em ambientes de deploy em nuvem.
+#   pip install pysus
+#
+# Driver Oracle, para a carga no Autonomous Database e o Select AI:
+#   pip install oracledb
+#
+# Notebook de analise exploratoria:
+#   pip install jupyter nbconvert

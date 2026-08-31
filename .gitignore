@@ -1,0 +1,28 @@
+# Credenciais
+.env
+*.pem
+Wallet_*/
+wallet/
+tnsnames.ora
+sqlnet.ora
+
+# Dados brutos (grandes demais para o git)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*.parquet
+data/exports/*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

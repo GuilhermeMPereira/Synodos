@@ -1,0 +1,18 @@
+{
+  "correlacoes_relevantes": [
+    "Internacoes/10k x Ocupacao: 0.75",
+    "Internacoes/10k x Custo per capita: 0.96",
+    "Permanencia x Leitos/10k: 0.70",
+    "Leitos/10k x Ocupacao: -0.81",
+    "Ocupacao x Custo per capita: 0.61",
+    "CAPS/100k x Custo per capita: -0.61"
+  ],
+  "graficos": [
+    "01_serie_temporal.png",
+    "02_diagnosticos.png",
+    "03_pressao_assistencial.png",
+    "04_distribuicao_permanencia.png",
+    "05_correlacao.png",
+    "06_perfil_demografico.png"
+  ]
+}

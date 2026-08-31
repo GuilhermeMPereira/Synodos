@@ -1,0 +1,40 @@
+{
+  "clusterizacao": {
+    "k_escolhido": 4,
+    "silhueta_por_k": {
+      "2": 0.301,
+      "3": 0.325,
+      "4": 0.397,
+      "5": 0.306
+    },
+    "silhueta_final": 0.397,
+    "atributos": [
+      "internacoes_por_10k_ano",
+      "permanencia_media",
+      "leitos_por_10k_hab",
+      "taxa_ocupacao_pct",
+      "caps_por_100k_hab"
+    ],
+    "inercia": 4.05
+  },
+  "projecao": {
+    "r2": 0.9883,
+    "mape_validacao_pct": 0.98,
+    "erro_padrao_residuos": 133.0,
+    "tendencia_por_mes": 51.7,
+    "tendencia_anualizada_pct": 6.3,
+    "crescimento_yoy_projetado_pct": 6.3,
+    "horizonte_meses": 6
+  },
+  "decomposicao": {
+    "forca_tendencia": 1.0,
+    "forca_sazonalidade": 1.0,
+    "mes_pico_sazonal": 6,
+    "mes_vale_sazonal": 12
+  },
+  "graficos": [
+    "07_clusters.png",
+    "08_projecao.png",
+    "09_decomposicao.png"
+  ]
+}

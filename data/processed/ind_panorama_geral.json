@@ -1,0 +1,15 @@
+{
+  "total_internacoes": 234803,
+  "competencias_analisadas": 24,
+  "permanencia_media_dias": 17.7,
+  "permanencia_mediana_dias": 15.0,
+  "internacoes_prolongadas_pct": 13.6,
+  "taxa_mortalidade_pct": 1.09,
+  "custo_total_reais": 324128476.13,
+  "custo_medio_aih_reais": 1380.43,
+  "leitos_saude_mental": 9134,
+  "taxa_ocupacao_estimada_pct": 62.2,
+  "idade_media": 38.6,
+  "ufs_cobertas": 7,
+  "estabelecimentos_ativos": 895
+}

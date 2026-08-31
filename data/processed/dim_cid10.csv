@@ -1,0 +1,21 @@
+cid10;grupo_cid;descricao;descricao_curta;gravidade_relativa;permanencia_esperada_dias
+F10;F10-F19;Transtornos mentais e comportamentais devidos ao uso de álcool;Uso de álcool;alta;14
+F11;F10-F19;Transtornos mentais e comportamentais devidos ao uso de opiáceos;Uso de opiáceos;alta;12
+F14;F10-F19;Transtornos mentais e comportamentais devidos ao uso de cocaína;Uso de cocaína;alta;13
+F15;F10-F19;Transtornos mentais devidos ao uso de outros estimulantes;Outros estimulantes;media;10
+F19;F10-F19;Transtornos mentais devidos ao uso de múltiplas drogas;Múltiplas drogas;alta;16
+F20;F20-F29;Esquizofrenia;Esquizofrenia;alta;28
+F23;F20-F29;Transtornos psicóticos agudos e transitórios;Psicose aguda;alta;18
+F25;F20-F29;Transtornos esquizoafetivos;Esquizoafetivo;alta;24
+F29;F20-F29;Psicose não orgânica não especificada;Psicose não especificada;alta;20
+F30;F30-F39;Episódio maníaco;Episódio maníaco;alta;22
+F31;F30-F39;Transtorno afetivo bipolar;Transtorno bipolar;alta;21
+F32;F30-F39;Episódios depressivos;Episódio depressivo;media;12
+F33;F30-F39;Transtorno depressivo recorrente;Depressão recorrente;media;14
+F41;F40-F48;Outros transtornos ansiosos;Transtorno de ansiedade;baixa;7
+F43;F40-F48;Reações ao estresse grave e transtornos de adaptação;Estresse e adaptação;baixa;6
+F60;F60-F69;Transtornos específicos da personalidade;Transtorno de personalidade;media;11
+F70;F70-F79;Retardo mental leve;Retardo mental leve;baixa;9
+F84;F80-F89;Transtornos globais do desenvolvimento;Desenvolvimento global;media;10
+F90;F90-F98;Transtornos hipercinéticos;Transtorno hipercinético;baixa;8
+F00;F00-F09;Demência na doença de Alzheimer;Demência (Alzheimer);alta;19

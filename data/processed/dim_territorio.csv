@@ -1,0 +1,28 @@
+co_uf;sg_uf;nm_uf;regiao;populacao_2022;populacao_regiao;qt_ufs
+11;RO;Rondônia;Norte;1581196;17354884;7
+12;AC;Acre;Norte;830018;17354884;7
+13;AM;Amazonas;Norte;3941613;17354884;7
+14;RR;Roraima;Norte;636707;17354884;7
+15;PA;Pará;Norte;8120131;17354884;7
+16;AP;Amapá;Norte;733759;17354884;7
+17;TO;Tocantins;Norte;1511460;17354884;7
+21;MA;Maranhão;Nordeste;6775805;54657298;9
+22;PI;Piauí;Nordeste;3271199;54657298;9
+23;CE;Ceará;Nordeste;8794957;54657298;9
+24;RN;Rio Grande do Norte;Nordeste;3302406;54657298;9
+25;PB;Paraíba;Nordeste;3974687;54657298;9
+26;PE;Pernambuco;Nordeste;9058931;54657298;9
+27;AL;Alagoas;Nordeste;3127683;54657298;9
+28;SE;Sergipe;Nordeste;2210004;54657298;9
+29;BA;Bahia;Nordeste;14141626;54657298;9
+31;MG;Minas Gerais;Sudeste;20538718;84838842;4
+32;ES;Espírito Santo;Sudeste;3833712;84838842;4
+33;RJ;Rio de Janeiro;Sudeste;16055174;84838842;4
+35;SP;São Paulo;Sudeste;44411238;84838842;4
+41;PR;Paraná;Sul;11444380;29937706;3
+42;SC;Santa Catarina;Sul;7610361;29937706;3
+43;RS;Rio Grande do Sul;Sul;10882965;29937706;3
+50;MS;Mato Grosso do Sul;Centro-Oeste;2757013;16289538;4
+51;MT;Mato Grosso;Centro-Oeste;3658649;16289538;4
+52;GO;Goiás;Centro-Oeste;7056495;16289538;4
+53;DF;Distrito Federal;Centro-Oeste;2817381;16289538;4
