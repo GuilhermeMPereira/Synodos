@@ -25,15 +25,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import settings  # noqa: E402
 
 # ------------------------------------------------------------------ paleta
+# Paleta categorica validada para daltonismo e contraste sobre fundo claro.
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100",
           "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 STATUS = {"Baixa": "#1baf7a", "Moderada": "#eda100",
-          "Alta": "#eb6834", "Critica": "#e34948"}
+          "Alta": "#eb6834", "Crítica": "#e34948"}
 TEXT_SECONDARY = "#52514e"
+TEXT_MUTED = "#8a8880"
 GRID = "#e5e4df"
 
 st.set_page_config(
-    page_title="Synodos | Painel de Saude Mental",
+    page_title="Synodos | Painel de Saúde Mental",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -42,12 +44,21 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-      .block-container {padding-top: 2.2rem; max-width: 1400px;}
-      [data-testid="stMetricValue"] {font-size: 1.75rem;}
-      [data-testid="stMetricLabel"] {font-size: 0.82rem;}
-      h1 {font-size: 1.9rem !important;}
-      .rodape {color:#8a8880; font-size:0.78rem; margin-top:2.5rem;
-               border-top:1px solid #e5e4df; padding-top:0.9rem;}
+      .block-container {padding-top: 2.5rem; padding-bottom: 3rem;
+                        max-width: 1500px;}
+      [data-testid="stMetricValue"] {font-size: 1.9rem; font-weight: 600;}
+      [data-testid="stMetricLabel"] {font-size: 0.8rem; color: #52514e;}
+      h1 {font-size: 1.85rem !important; margin-bottom: 0.2rem !important;}
+      h3 {font-size: 1.15rem !important;}
+      .stTabs [data-baseweb="tab-list"] {gap: 1.6rem;}
+      .stTabs [data-baseweb="tab"] {padding: 0.4rem 0;}
+      .titulo-grafico {font-size: 1.02rem; font-weight: 600; color: #0b0b0b;
+                       margin: 0.1rem 0 0.15rem 0;}
+      .sub-grafico {font-size: 0.82rem; color: #52514e;
+                    margin: 0 0 0.6rem 0; line-height: 1.35;}
+      .rodape {color:#8a8880; font-size:0.78rem; margin-top:3rem;
+               border-top:1px solid #e5e4df; padding-top:1rem;
+               line-height: 1.6;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -113,24 +124,107 @@ def carregar():
     return dados
 
 
+# Nomes tecnicos das colunas traduzidos para exibicao. As consultas devolvem
+# os nomes do banco; o gestor le rotulos em portugues.
+COLUNAS_LEGIVEIS = {
+    "ranking": "#",
+    "estado": "Estado",
+    "regiao": "Região",
+    "indice_pressao": "IPA",
+    "classificacao": "Situação",
+    "internacoes_por_10k_ano": "Internações/10 mil hab.",
+    "permanencia_media": "Permanência (dias)",
+    "leitos_por_10k_hab": "Leitos/10 mil hab.",
+    "caps_por_100k_hab": "CAPS/100 mil hab.",
+    "habitantes_por_caps": "Habitantes por CAPS",
+    "taxa_ocupacao_pct": "Ocupação (%)",
+    "qt_internacoes": "Internações",
+    "qt_leitos": "Leitos",
+    "qt_caps": "CAPS",
+    "qt_estabelecimentos": "Estabelecimentos",
+    "populacao": "População",
+    "custo_total": "Custo total (R$)",
+    "custo_per_capita": "Custo per capita (R$)",
+    "competencia": "Competência",
+    "media_movel_3m": "Média móvel (3 meses)",
+    "variacao_mensal_pct": "Variação mensal (%)",
+    "cid": "CID-10",
+    "descricao": "Diagnóstico",
+    "pct_internacoes": "% das internações",
+    "pct_dias_leito": "% dos dias de leito",
+    "indice_carga_leito": "Índice de carga de leito",
+    "faixa_etaria": "Faixa etária",
+    "sexo": "Sexo",
+    "pct": "% do total",
+    "total_internacoes": "Total de internações",
+    "competencias": "Competências",
+    "estados": "Estados",
+    "mortalidade_pct": "Mortalidade (%)",
+}
+
+
+# ------------------------------------------------------------------ helpers
 def fmt(valor, casas: int = 0) -> str:
-    """Formata numero no padrao brasileiro."""
+    """Formata numero no padrao brasileiro: 234803 -> 234.803"""
     texto = f"{valor:,.{casas}f}"
     return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
-def layout_grafico(fig, altura: int = 380):
+def titulo(texto: str, subtitulo: str = "") -> None:
+    """
+    Titulo do grafico em HTML, fora da figura.
+
+    Os titulos nativos do Plotly ocupam a mesma faixa vertical da legenda e
+    acabam se sobrepondo. Escrevendo o titulo fora, a figura fica livre para
+    posicionar a legenda sem colisao.
+    """
+    st.markdown(f'<div class="titulo-grafico">{texto}</div>',
+                unsafe_allow_html=True)
+    if subtitulo:
+        st.markdown(f'<div class="sub-grafico">{subtitulo}</div>',
+                    unsafe_allow_html=True)
+
+
+def layout_grafico(fig, altura: int = 360, legenda: bool = False):
+    """
+    Aplica a identidade visual e resolve dois problemas recorrentes:
+    a legenda vai para baixo do grafico (nunca colide com o titulo), e a
+    margem superior fica minima porque o titulo mora fora da figura.
+    """
     fig.update_layout(
         height=altura,
-        margin=dict(l=10, r=10, t=45, b=10),
+        margin=dict(l=8, r=24, t=12, b=8),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-        hovermode="x unified",
+        font=dict(size=12, color=TEXT_SECONDARY),
+        # Localizacao brasileira: virgula decimal e ponto de milhar.
+        # O primeiro caractere e o separador decimal, o segundo o de milhar.
+        # Vale para os rotulos das barras e para os tooltips.
+        separators=",.",
+        showlegend=legenda,
+        legend=dict(
+            orientation="h", yanchor="top", y=-0.18,
+            xanchor="left", x=0, title=None,
+        ),
+        hoverlabel=dict(font_size=12),
     )
-    fig.update_xaxes(gridcolor=GRID, zeroline=False)
-    fig.update_yaxes(gridcolor=GRID, zeroline=False)
+    fig.update_xaxes(gridcolor=GRID, zeroline=False, linecolor=GRID)
+    fig.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=GRID)
+    return fig
+
+
+def folga_rotulos(fig, valores, fator: float = 1.22, eixo: str = "x"):
+    """
+    Reserva espaco para os rotulos escritos fora das barras.
+
+    Sem isso o Plotly corta o texto na borda do grafico - foi o que acontecia
+    com os valores dos diagnosticos ("44.465" aparecia como "4...").
+    """
+    maximo = float(max(valores)) if len(valores) else 1.0
+    if eixo == "x":
+        fig.update_xaxes(range=[0, maximo * fator])
+    else:
+        fig.update_yaxes(range=[0, maximo * fator])
     return fig
 
 
@@ -138,7 +232,7 @@ try:
     D = carregar()
 except FileNotFoundError:
     st.error(
-        "Dados nao encontrados. Execute o pipeline primeiro:\n\n"
+        "Dados não encontrados. Execute o pipeline primeiro:\n\n"
         "```\npython -m src.ingestao.gerar_amostra\n"
         "python -m src.ingestao.ingest_csv\n"
         "python -m src.etl.tratamento\n"
@@ -151,14 +245,14 @@ except FileNotFoundError:
 
 # ------------------------------------------------------------------ filtros
 st.sidebar.title("Synodos")
-st.sidebar.caption("Painel de saude mental no SUS")
+st.sidebar.caption("Painel de saúde mental no SUS")
 st.sidebar.divider()
 
 df = D["analitico"]
 
 competencias = sorted(df["competencia"].astype(str).unique())
 periodo = st.sidebar.select_slider(
-    "Periodo (competencia)",
+    "Período (competência)",
     options=competencias,
     value=(competencias[0], competencias[-1]),
 )
@@ -167,12 +261,12 @@ ufs = sorted(df["sg_uf"].unique())
 ufs_sel = st.sidebar.multiselect("Estados", ufs, default=ufs)
 
 regioes = sorted(df["regiao"].dropna().unique())
-regioes_sel = st.sidebar.multiselect("Regioes", regioes, default=regioes)
+regioes_sel = st.sidebar.multiselect("Regiões", regioes, default=regioes)
 
 diags = sorted(df["cid_grupo"].unique())
 diags_sel = st.sidebar.multiselect(
-    "Diagnosticos (CID-10)", diags, default=[],
-    help="Vazio = todos os diagnosticos",
+    "Diagnósticos (CID-10)", diags, default=[],
+    help="Deixe vazio para incluir todos os diagnósticos",
 )
 
 mask = (
@@ -186,7 +280,7 @@ if diags_sel:
 f = df[mask]
 
 st.sidebar.divider()
-st.sidebar.metric("Internacoes no filtro", fmt(len(f)))
+st.sidebar.metric("Internações no filtro", fmt(len(f)))
 if len(f) < len(df):
     st.sidebar.caption(f"{len(f) / len(df) * 100:.1f}% da base completa")
 
@@ -194,9 +288,9 @@ origem = settings.RAW_DIR / "_ORIGEM_AMOSTRA.txt"
 if origem.exists():
     st.sidebar.divider()
     st.sidebar.warning(
-        "**Modo amostra**\n\nOs dados exibidos foram gerados com estrutura "
-        "identica a do SIH/SUS e calibrados por taxas publicas reais, mas "
-        "os registros individuais sao sinteticos. Para dados oficiais, rode "
+        "**Modo amostra**\n\nOs dados exibidos têm a mesma estrutura do "
+        "SIH/SUS e foram calibrados por taxas públicas reais, mas os "
+        "registros individuais são sintéticos. Para dados oficiais, rode "
         "`python -m src.ingestao.ingest_sih`.",
         icon="⚠️",
     )
@@ -207,14 +301,15 @@ if f.empty:
 
 
 # ------------------------------------------------------------------ cabecalho
-st.title("Painel de Acesso Hospitalar em Saude Mental")
+st.title("Painel de Acesso Hospitalar em Saúde Mental")
 st.caption(
-    "Internacoes do SUS por transtornos mentais e comportamentais "
-    "(CID-10, Capitulo V) integradas ao cadastro da rede e a populacao IBGE"
+    "Internações do SUS por transtornos mentais e comportamentais "
+    "(CID-10, Capítulo V), integradas ao cadastro da rede e à população IBGE"
 )
+st.write("")
 
 abas = st.tabs(
-    ["Panorama", "Territorio", "Rede instalada", "Perguntar aos dados"]
+    ["Panorama", "Território", "Rede instalada", "Perguntar aos dados"]
 )
 
 
@@ -229,320 +324,410 @@ with abas[0]:
         if leitos else 0
     )
 
-    c = st.columns(5)
-    c[0].metric("Internacoes", fmt(len(f)))
-    c[1].metric("Permanencia media", f"{f['qt_dias_permanencia'].mean():.1f} dias")
-    c[2].metric("Ocupacao estimada", f"{ocupacao:.0f}%")
-    c[3].metric("Taxa de mortalidade", f"{f['fl_obito'].mean() * 100:.2f}%")
-    c[4].metric("Custo total", f"R$ {fmt(f['vl_total_aih'].sum() / 1e6, 1)} mi")
+    with st.container(border=True):
+        c = st.columns(5)
+        c[0].metric("Internações", fmt(len(f)))
+        c[1].metric("Permanência média",
+                    f"{fmt(f['qt_dias_permanencia'].mean(), 1)} dias")
+        c[2].metric("Ocupação estimada", f"{ocupacao:.0f}%")
+        c[3].metric("Taxa de mortalidade",
+                    f"{fmt(f['fl_obito'].mean() * 100, 2)}%")
+        c[4].metric("Custo total",
+                    f"R$ {fmt(f['vl_total_aih'].sum() / 1e6, 1)} mi")
 
-    st.divider()
-
-    esq, dir_ = st.columns([3, 2])
+    st.write("")
+    esq, dir_ = st.columns([3, 2], gap="large")
 
     with esq:
-        serie = (
-            f.groupby("competencia", as_index=False)
-            .agg(internacoes=("nu_aih", "count"))
-            .sort_values("competencia")
-        )
-        serie["media_movel"] = (
-            serie["internacoes"].rolling(3, min_periods=1).mean()
-        )
-        serie["rotulo"] = (
-            serie["competencia"].astype(str).str[4:6] + "/"
-            + serie["competencia"].astype(str).str[2:4]
-        )
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=serie["rotulo"], y=serie["internacoes"], name="Internacoes",
-            mode="lines+markers", line=dict(color=SERIES[0], width=2.5),
-            marker=dict(size=7),
-        ))
-        fig.add_trace(go.Scatter(
-            x=serie["rotulo"], y=serie["media_movel"],
-            name="Media movel 3 meses", mode="lines",
-            line=dict(color=SERIES[1], width=2, dash="dash"),
-        ))
-        fig.update_layout(title="Evolucao mensal das internacoes")
-        st.plotly_chart(layout_grafico(fig), width="stretch")
-
-    with dir_:
-        diag = (
-            f.groupby("descricao_curta", as_index=False)
-            .agg(internacoes=("nu_aih", "count"))
-            .nlargest(8, "internacoes")
-            .sort_values("internacoes")
-        )
-        fig = px.bar(
-            diag, x="internacoes", y="descricao_curta", orientation="h",
-            text="internacoes",
-        )
-        fig.update_traces(
-            marker_color=SERIES[0], texttemplate="%{text:,}",
-            textposition="outside",
-        )
-        fig.update_layout(
-            title="Principais diagnosticos", xaxis_title="", yaxis_title="",
-            showlegend=False,
-        )
-        st.plotly_chart(layout_grafico(fig), width="stretch")
-
-    esq2, dir2 = st.columns(2)
-
-    with esq2:
-        demo = (
-            f.groupby(["faixa_etaria", "ds_sexo"], as_index=False,
-                      observed=True)
-            .agg(internacoes=("nu_aih", "count"))
-        )
-        fig = px.bar(
-            demo, x="faixa_etaria", y="internacoes", color="ds_sexo",
-            barmode="group", color_discrete_sequence=SERIES,
-        )
-        fig.update_layout(
-            title="Perfil demografico", xaxis_title="Faixa etaria",
-            yaxis_title="Internacoes", legend_title="",
-        )
-        st.plotly_chart(layout_grafico(fig, 340), width="stretch")
-
-    with dir2:
-        if "projecao" in D and len(ufs_sel) == len(ufs):
-            proj = D["projecao"].copy()
-            proj["rotulo"] = (
-                proj["competencia"].astype(str).str[4:6] + "/"
-                + proj["competencia"].astype(str).str[2:4]
+        with st.container(border=True):
+            serie = (
+                f.groupby("competencia", as_index=False)
+                .agg(internacoes=("nu_aih", "count"))
+                .sort_values("competencia")
             )
+            serie["media_movel"] = (
+                serie["internacoes"].rolling(3, min_periods=1).mean()
+            )
+            serie["rotulo"] = (
+                serie["competencia"].astype(str).str[4:6] + "/"
+                + serie["competencia"].astype(str).str[2:4]
+            )
+
+            variacao = (
+                serie["internacoes"].iloc[-1] / serie["internacoes"].iloc[0] - 1
+            ) * 100 if len(serie) > 1 else 0
+
+            titulo(
+                "Evolução mensal das internações",
+                f"Variação de {variacao:+.0f}% entre a primeira e a última "
+                f"competência do período filtrado",
+            )
+
             fig = go.Figure()
             fig.add_trace(go.Scatter(
-                x=proj["rotulo"], y=proj["limite_superior"],
-                mode="lines", line=dict(width=0), showlegend=False,
-                hoverinfo="skip",
+                x=serie["rotulo"], y=serie["internacoes"],
+                name="Internações no mês", mode="lines+markers",
+                line=dict(color=SERIES[0], width=2.5), marker=dict(size=6),
+                hovertemplate="%{x}<br>%{y:,.0f} internações<extra></extra>",
             ))
             fig.add_trace(go.Scatter(
-                x=proj["rotulo"], y=proj["limite_inferior"],
-                mode="lines", line=dict(width=0), fill="tonexty",
-                fillcolor="rgba(235,104,52,0.18)",
-                name="Intervalo 95%", hoverinfo="skip",
+                x=serie["rotulo"], y=serie["media_movel"],
+                name="Média móvel de 3 meses", mode="lines",
+                line=dict(color=SERIES[1], width=2, dash="dash"),
+                hovertemplate="%{x}<br>média %{y:,.0f}<extra></extra>",
             ))
-            fig.add_trace(go.Scatter(
-                x=proj["rotulo"], y=proj["previsto"], mode="lines+markers",
-                name="Projetado", line=dict(color=SERIES[1], width=2.5),
-                marker=dict(size=8, symbol="square"),
-            ))
-            fig.update_layout(
-                title="Projecao para os proximos 6 meses",
-                yaxis_title="Internacoes",
+            fig.update_yaxes(title_text="Internações")
+            st.plotly_chart(
+                layout_grafico(fig, 380, legenda=True), width="stretch"
             )
-            st.plotly_chart(layout_grafico(fig, 340), width="stretch")
-            st.caption(
-                "Regressao com tendencia e sazonalidade mensal. "
-                "A projecao considera a base completa, sem os filtros."
-            )
-        else:
-            perm = (
+
+    with dir_:
+        with st.container(border=True):
+            diag = (
                 f.groupby("descricao_curta", as_index=False)
-                .agg(permanencia=("qt_dias_permanencia", "mean"))
-                .nlargest(8, "permanencia").sort_values("permanencia")
+                .agg(internacoes=("nu_aih", "count"))
+                .nlargest(8, "internacoes")
+                .sort_values("internacoes")
             )
+            titulo(
+                "Principais diagnósticos",
+                "Internações no período, por transtorno",
+            )
+
             fig = px.bar(
-                perm, x="permanencia", y="descricao_curta", orientation="h",
-                text="permanencia",
+                diag, x="internacoes", y="descricao_curta",
+                orientation="h", text="internacoes",
             )
             fig.update_traces(
-                marker_color=SERIES[1], texttemplate="%{text:.0f}d",
-                textposition="outside",
+                marker_color=SERIES[0], texttemplate="%{text:,}",
+                textposition="outside", cliponaxis=False,
+                hovertemplate="%{y}<br>%{x:,.0f} internações<extra></extra>",
             )
-            fig.update_layout(
-                title="Permanencia media por diagnostico",
-                xaxis_title="Dias", yaxis_title="", showlegend=False,
+            fig.update_xaxes(title_text="", showticklabels=False,
+                             showgrid=False)
+            fig.update_yaxes(title_text="", showgrid=False)
+            folga_rotulos(fig, diag["internacoes"])
+            st.plotly_chart(layout_grafico(fig, 380), width="stretch")
+
+    st.write("")
+    esq2, dir2 = st.columns(2, gap="large")
+
+    with esq2:
+        with st.container(border=True):
+            demo = (
+                f.groupby(["faixa_etaria", "ds_sexo"], as_index=False,
+                          observed=True)
+                .agg(internacoes=("nu_aih", "count"))
             )
-            st.plotly_chart(layout_grafico(fig, 340), width="stretch")
+            pico = (
+                demo.groupby("faixa_etaria", observed=True)["internacoes"]
+                .sum().idxmax()
+            )
+            titulo(
+                "Perfil demográfico",
+                f"A faixa de {pico} anos concentra o maior volume",
+            )
+
+            fig = px.bar(
+                demo, x="faixa_etaria", y="internacoes", color="ds_sexo",
+                barmode="group", color_discrete_sequence=SERIES,
+            )
+            fig.update_traces(
+                hovertemplate="%{x}<br>%{y:,.0f} internações<extra></extra>"
+            )
+            fig.update_xaxes(title_text="Faixa etária", showgrid=False)
+            fig.update_yaxes(title_text="Internações")
+            st.plotly_chart(
+                layout_grafico(fig, 340, legenda=True), width="stretch"
+            )
+
+    with dir2:
+        with st.container(border=True):
+            if "projecao" in D and len(ufs_sel) == len(ufs):
+                proj = D["projecao"].copy()
+                proj["rotulo"] = (
+                    proj["competencia"].astype(str).str[4:6] + "/"
+                    + proj["competencia"].astype(str).str[2:4]
+                )
+                titulo(
+                    "Projeção para os próximos 6 meses",
+                    "Regressão com tendência e sazonalidade mensal. "
+                    "Considera a base completa, sem os filtros da barra "
+                    "lateral.",
+                )
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=proj["rotulo"], y=proj["limite_superior"],
+                    mode="lines", line=dict(width=0), showlegend=False,
+                    hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=proj["rotulo"], y=proj["limite_inferior"],
+                    mode="lines", line=dict(width=0), fill="tonexty",
+                    fillcolor="rgba(235,104,52,0.16)",
+                    name="Intervalo de confiança 95%", hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=proj["rotulo"], y=proj["previsto"],
+                    mode="lines+markers", name="Projetado",
+                    line=dict(color=SERIES[1], width=2.5),
+                    marker=dict(size=8, symbol="square"),
+                    hovertemplate="%{x}<br>%{y:,.0f} previstas<extra></extra>",
+                ))
+                fig.update_yaxes(title_text="Internações")
+                st.plotly_chart(
+                    layout_grafico(fig, 340, legenda=True), width="stretch"
+                )
+            else:
+                perm = (
+                    f.groupby("descricao_curta", as_index=False)
+                    .agg(permanencia=("qt_dias_permanencia", "mean"))
+                    .nlargest(8, "permanencia").sort_values("permanencia")
+                )
+                titulo(
+                    "Permanência média por diagnóstico",
+                    "Dias de internação, no recorte filtrado",
+                )
+                fig = px.bar(
+                    perm, x="permanencia", y="descricao_curta",
+                    orientation="h", text="permanencia",
+                )
+                fig.update_traces(
+                    marker_color=SERIES[1], texttemplate="%{text:.0f} dias",
+                    textposition="outside", cliponaxis=False,
+                )
+                fig.update_xaxes(title_text="", showticklabels=False,
+                                 showgrid=False)
+                fig.update_yaxes(title_text="", showgrid=False)
+                folga_rotulos(fig, perm["permanencia"], 1.28)
+                st.plotly_chart(layout_grafico(fig, 340), width="stretch")
 
 
 # ================================================================ TERRITORIO
 with abas[1]:
-    st.subheader("Comparacao entre estados")
+    st.subheader("Comparação entre estados")
     st.caption(
-        "Numeros absolutos favorecem estados populosos. A taxa por 10 mil "
-        "habitantes permite comparacao justa entre unidades federativas."
+        "Números absolutos favorecem estados populosos. A taxa por 10 mil "
+        "habitantes permite comparação justa entre unidades federativas."
     )
+    st.write("")
 
     pressao = D["pressao"][D["pressao"]["sg_uf"].isin(ufs_sel)]
 
-    esq, dir_ = st.columns(2)
+    esq, dir_ = st.columns(2, gap="large")
 
     with esq:
-        taxa = (
-            f.groupby(["sg_uf", "nm_uf"], as_index=False)
-            .agg(internacoes=("nu_aih", "count"),
-                 populacao=("populacao_2022", "first"))
-        )
-        anos = f["competencia"].nunique() / 12
-        taxa["por_10k"] = (
-            taxa["internacoes"] / taxa["populacao"] * 10000 / anos
-        ).round(2)
-        taxa = taxa.sort_values("por_10k")
+        with st.container(border=True):
+            taxa = (
+                f.groupby(["sg_uf", "nm_uf"], as_index=False)
+                .agg(internacoes=("nu_aih", "count"),
+                     populacao=("populacao_2022", "first"))
+            )
+            anos = max(f["competencia"].nunique() / 12, 1 / 12)
+            taxa["por_10k"] = (
+                taxa["internacoes"] / taxa["populacao"] * 10000 / anos
+            ).round(2)
+            taxa = taxa.sort_values("por_10k")
 
-        fig = px.bar(
-            taxa, x="por_10k", y="nm_uf", orientation="h", text="por_10k",
-        )
-        fig.update_traces(
-            marker_color=SERIES[0], texttemplate="%{text:.1f}",
-            textposition="outside",
-        )
-        fig.update_layout(
-            title="Internacoes por 10 mil habitantes/ano",
-            xaxis_title="", yaxis_title="", showlegend=False,
-        )
-        st.plotly_chart(layout_grafico(fig), width="stretch")
+            titulo(
+                "Internações por 10 mil habitantes",
+                "Taxa anualizada, comparável entre estados",
+            )
+            fig = px.bar(
+                taxa, x="por_10k", y="nm_uf", orientation="h", text="por_10k",
+            )
+            fig.update_traces(
+                marker_color=SERIES[0], texttemplate="%{text:.1f}",
+                textposition="outside", cliponaxis=False,
+                hovertemplate="%{y}<br>%{x:.2f} por 10 mil hab./ano"
+                              "<extra></extra>",
+            )
+            fig.update_xaxes(title_text="", showticklabels=False,
+                             showgrid=False)
+            fig.update_yaxes(title_text="", showgrid=False)
+            folga_rotulos(fig, taxa["por_10k"], 1.18)
+            st.plotly_chart(layout_grafico(fig, 380), width="stretch")
 
     with dir_:
-        p = pressao.sort_values("indice_pressao")
-        fig = go.Figure(go.Bar(
-            x=p["indice_pressao"], y=p["nm_uf"], orientation="h",
-            marker_color=[STATUS.get(c, SERIES[0])
-                          for c in p["classificacao"]],
-            text=[f"{v:.0f} ({c})" for v, c
-                  in zip(p["indice_pressao"], p["classificacao"])],
-            textposition="outside",
-        ))
-        fig.update_layout(
-            title="Indice de Pressao Assistencial",
-            xaxis_title="0 a 100", xaxis_range=[0, 115],
-        )
-        st.plotly_chart(layout_grafico(fig), width="stretch")
-        st.caption(
-            "Demanda (50%) + complexidade (30%) + escassez de leitos (20%)"
-        )
+        with st.container(border=True):
+            p = pressao.sort_values("indice_pressao")
+            titulo(
+                "Índice de Pressão Assistencial",
+                "Demanda (50%) + complexidade (30%) + escassez de "
+                "leitos (20%), normalizados de 0 a 100",
+            )
+            fig = go.Figure(go.Bar(
+                x=p["indice_pressao"], y=p["nm_uf"], orientation="h",
+                marker_color=[STATUS.get(c, SERIES[0])
+                              for c in p["classificacao"]],
+                text=[f"{v:.0f}  ·  {c}" for v, c
+                      in zip(p["indice_pressao"], p["classificacao"])],
+                textposition="outside", cliponaxis=False,
+                hovertemplate="%{y}<br>IPA %{x:.0f}<extra></extra>",
+            ))
+            fig.update_xaxes(title_text="", showticklabels=False,
+                             showgrid=False, range=[0, 132])
+            fig.update_yaxes(title_text="", showgrid=False)
+            st.plotly_chart(layout_grafico(fig, 380), width="stretch")
 
-    st.divider()
-    st.markdown("**Ranking detalhado**")
-    st.dataframe(
-        pressao[[
-            "ranking", "nm_uf", "regiao", "indice_pressao", "classificacao",
-            "internacoes_por_10k_ano", "permanencia_media",
-            "leitos_por_10k_hab", "taxa_ocupacao_pct",
-        ]].rename(columns={
-            "ranking": "#", "nm_uf": "Estado", "regiao": "Regiao",
-            "indice_pressao": "IPA", "classificacao": "Situacao",
-            "internacoes_por_10k_ano": "Internacoes/10k",
-            "permanencia_media": "Permanencia (dias)",
-            "leitos_por_10k_hab": "Leitos/10k",
-            "taxa_ocupacao_pct": "Ocupacao (%)",
-        }),
-        hide_index=True, width="stretch",
-    )
+    st.write("")
+    with st.container(border=True):
+        titulo("Ranking detalhado", "Todos os indicadores por estado")
+        st.dataframe(
+            pressao[[
+                "ranking", "nm_uf", "regiao", "indice_pressao",
+                "classificacao", "internacoes_por_10k_ano",
+                "permanencia_media", "leitos_por_10k_hab",
+                "taxa_ocupacao_pct",
+            ]].rename(columns={
+                "ranking": "#", "nm_uf": "Estado", "regiao": "Região",
+                "indice_pressao": "IPA", "classificacao": "Situação",
+                "internacoes_por_10k_ano": "Internações/10 mil hab.",
+                "permanencia_media": "Permanência (dias)",
+                "leitos_por_10k_hab": "Leitos/10 mil hab.",
+                "taxa_ocupacao_pct": "Ocupação (%)",
+            }),
+            hide_index=True, width="stretch",
+        )
 
 
 # ================================================================ REDE
 with abas[2]:
     st.subheader("Capacidade instalada da rede")
+    st.caption(
+        "Estabelecimentos, leitos e CAPS que compõem a Rede de Atenção "
+        "Psicossocial nos estados selecionados."
+    )
+    st.write("")
 
     ocup = D["ocupacao"][D["ocupacao"]["sg_uf"].isin(ufs_sel)]
 
-    c = st.columns(4)
-    c[0].metric("Leitos de saude mental", fmt(ocup["qt_leitos"].sum()))
-    c[1].metric("CAPS", fmt(ocup["qt_caps"].sum()))
-    c[2].metric("Estabelecimentos", fmt(ocup["qt_estabelecimentos"].sum()))
-    c[3].metric(
-        "Ocupacao media", f"{ocup['taxa_ocupacao_pct'].mean():.0f}%"
-    )
+    with st.container(border=True):
+        c = st.columns(4)
+        c[0].metric("Leitos de saúde mental", fmt(ocup["qt_leitos"].sum()))
+        c[1].metric("CAPS", fmt(ocup["qt_caps"].sum()))
+        c[2].metric("Estabelecimentos",
+                    fmt(ocup["qt_estabelecimentos"].sum()))
+        c[3].metric("Ocupação média",
+                    f"{ocup['taxa_ocupacao_pct'].mean():.0f}%")
 
-    st.divider()
-    esq, dir_ = st.columns(2)
+    st.write("")
+    esq, dir_ = st.columns(2, gap="large")
 
     with esq:
-        o = ocup.sort_values("taxa_ocupacao_pct")
-        fig = px.bar(
-            o, x="taxa_ocupacao_pct", y="sg_uf", orientation="h",
-            text="taxa_ocupacao_pct",
-        )
-        fig.update_traces(
-            marker_color=SERIES[2], texttemplate="%{text:.0f}%",
-            textposition="outside",
-        )
-        fig.update_layout(
-            title="Taxa de ocupacao estimada dos leitos",
-            xaxis_title="", yaxis_title="", showlegend=False,
-        )
-        st.plotly_chart(layout_grafico(fig), width="stretch")
+        with st.container(border=True):
+            o = ocup.sort_values("taxa_ocupacao_pct")
+            titulo(
+                "Taxa de ocupação estimada dos leitos",
+                "Dias-paciente sobre a capacidade instalada no período",
+            )
+            fig = px.bar(
+                o, x="taxa_ocupacao_pct", y="sg_uf", orientation="h",
+                text="taxa_ocupacao_pct",
+            )
+            fig.update_traces(
+                marker_color=SERIES[2], texttemplate="%{text:.0f}%",
+                textposition="outside", cliponaxis=False,
+                hovertemplate="%{y}<br>%{x:.1f}% de ocupação<extra></extra>",
+            )
+            fig.update_xaxes(title_text="", showticklabels=False,
+                             showgrid=False)
+            fig.update_yaxes(title_text="", showgrid=False)
+            folga_rotulos(fig, o["taxa_ocupacao_pct"], 1.18)
+            st.plotly_chart(layout_grafico(fig, 360), width="stretch")
 
     with dir_:
-        o = ocup.sort_values("leitos_por_10k_hab")
-        fig = px.bar(
-            o, x="leitos_por_10k_hab", y="sg_uf", orientation="h",
-            text="leitos_por_10k_hab",
-        )
-        fig.update_traces(
-            marker_color=SERIES[3], texttemplate="%{text:.2f}",
-            textposition="outside",
-        )
-        fig.update_layout(
-            title="Leitos por 10 mil habitantes",
-            xaxis_title="", yaxis_title="", showlegend=False,
-        )
-        st.plotly_chart(layout_grafico(fig), width="stretch")
+        with st.container(border=True):
+            o = ocup.sort_values("leitos_por_10k_hab")
+            titulo(
+                "Leitos por 10 mil habitantes",
+                "Densidade da capacidade instalada",
+            )
+            fig = px.bar(
+                o, x="leitos_por_10k_hab", y="sg_uf", orientation="h",
+                text="leitos_por_10k_hab",
+            )
+            fig.update_traces(
+                marker_color=SERIES[3], texttemplate="%{text:.2f}",
+                textposition="outside", cliponaxis=False,
+                hovertemplate="%{y}<br>%{x:.2f} leitos por 10 mil hab."
+                              "<extra></extra>",
+            )
+            fig.update_xaxes(title_text="", showticklabels=False,
+                             showgrid=False)
+            fig.update_yaxes(title_text="", showgrid=False)
+            folga_rotulos(fig, o["leitos_por_10k_hab"], 1.22)
+            st.plotly_chart(layout_grafico(fig, 360), width="stretch")
 
-    st.markdown("**Unidades com maior volume de internacoes**")
-    unidades = (
-        f.groupby(
-            ["nm_estabelecimento", "ds_tipo_unidade", "sg_uf"],
-            as_index=False,
+    st.write("")
+    with st.container(border=True):
+        titulo(
+            "Unidades com maior volume de internações",
+            "15 estabelecimentos com mais internações no recorte filtrado",
         )
-        .agg(
-            internacoes=("nu_aih", "count"),
-            permanencia=("qt_dias_permanencia", "mean"),
-            leitos=("qt_leitos_sus", "first"),
+        unidades = (
+            f.groupby(
+                ["nm_estabelecimento", "ds_tipo_unidade", "sg_uf"],
+                as_index=False,
+            )
+            .agg(
+                internacoes=("nu_aih", "count"),
+                permanencia=("qt_dias_permanencia", "mean"),
+                leitos=("qt_leitos_sus", "first"),
+            )
+            .nlargest(15, "internacoes")
         )
-        .nlargest(15, "internacoes")
-    )
-    unidades["permanencia"] = unidades["permanencia"].round(1)
-    st.dataframe(
-        unidades.rename(columns={
-            "nm_estabelecimento": "Estabelecimento",
-            "ds_tipo_unidade": "Tipo", "sg_uf": "UF",
-            "internacoes": "Internacoes",
-            "permanencia": "Permanencia (dias)", "leitos": "Leitos",
-        }),
-        hide_index=True, width="stretch",
-    )
+        unidades["permanencia"] = unidades["permanencia"].round(1)
+        st.dataframe(
+            unidades.rename(columns={
+                "nm_estabelecimento": "Estabelecimento",
+                "ds_tipo_unidade": "Tipo", "sg_uf": "UF",
+                "internacoes": "Internações",
+                "permanencia": "Permanência (dias)", "leitos": "Leitos",
+            }),
+            hide_index=True, width="stretch",
+        )
 
 
 # ================================================================ PERGUNTAR
 with abas[3]:
-    st.subheader("Pergunte aos dados em portugues")
+    st.subheader("Pergunte aos dados em português")
     st.caption(
         "O sistema interpreta a pergunta, gera a consulta SQL e a executa "
-        "sobre os dados. Em producao, o Oracle Select AI cumpre esse papel "
-        "usando os metadados do dicionario de dados."
+        "sobre os dados. Em produção, o Oracle Select AI cumpre esse papel "
+        "usando os metadados do dicionário de dados. Os números não vêm do "
+        "modelo de linguagem: vêm do banco."
     )
+    st.write("")
 
     sugestoes = [
-        "Quais estados estao com maior pressao assistencial?",
-        "Quais os cinco transtornos que mais consomem dias de leito?",
-        "Como evoluiram as internacoes mes a mes?",
+        "Quais estados estão com maior pressão assistencial?",
+        "Quais transtornos consomem mais dias de leito?",
+        "Como evoluíram as internações mês a mês?",
         "Qual estado tem menos leitos por habitante?",
-        "Qual a faixa etaria com mais internacoes?",
-        "Qual o custo total das internacoes por estado?",
+        "Qual a faixa etária com mais internações?",
+        "Qual o custo total das internações por estado?",
     ]
 
     if "pergunta" not in st.session_state:
         st.session_state.pergunta = sugestoes[0]
 
-    st.markdown("**Sugestoes**")
+    st.markdown('<div class="sub-grafico">Sugestões</div>',
+                unsafe_allow_html=True)
     cols = st.columns(3)
     for i, s in enumerate(sugestoes):
         if cols[i % 3].button(s, key=f"sug{i}", width="stretch"):
             st.session_state.pergunta = s
 
+    st.write("")
     pergunta = st.text_input(
-        "Sua pergunta", value=st.session_state.pergunta,
-        label_visibility="collapsed",
+        "Sua pergunta",
+        value=st.session_state.pergunta,
+        placeholder="Escreva sua pergunta em português...",
     )
 
-    if st.button("Consultar", type="primary") or pergunta:
+    if pergunta:
         try:
             from src.db.select_ai import perguntar
 
@@ -551,26 +736,33 @@ with abas[3]:
             if r.get("narrativa"):
                 st.success(r["narrativa"])
 
-            st.dataframe(
-                r["resultado"], hide_index=True, width="stretch"
-            )
+            with st.container(border=True):
+                titulo("Resultado da consulta")
+                st.dataframe(
+                    r["resultado"].rename(columns=COLUNAS_LEGIVEIS),
+                    hide_index=True, width="stretch",
+                )
 
-            with st.expander("SQL gerado e executado"):
+            with st.expander("Ver o SQL que foi gerado e executado"):
                 st.code(r["sql"], language="sql")
                 st.caption(
-                    f"Intencao reconhecida: `{r.get('intencao')}` | "
-                    f"modo: `{r['modo']}`"
+                    f"Intenção reconhecida: `{r.get('intencao')}`  |  "
+                    f"modo: `{r['modo']}`  |  "
+                    "o resultado acima veio da execução deste SQL, "
+                    "não do modelo de linguagem."
                 )
         except Exception as exc:  # noqa: BLE001
-            st.error(f"Nao foi possivel responder: {exc}")
+            st.error(f"Não foi possível responder: {exc}")
 
 
 # ------------------------------------------------------------------ rodape
 st.markdown(
     '<div class="rodape">'
-    "<b>Synodos</b> &nbsp;|&nbsp; FIAP + Oracle Challenge 2026 &nbsp;|&nbsp; "
-    "Fontes: SIH/SUS e CNES (Ministerio da Saude), Censo IBGE 2022 "
-    "&nbsp;|&nbsp; Dados publicos e agregados, sem identificacao de pacientes"
+    "<b>Synodos</b> &nbsp;·&nbsp; Challenge FIAP + Oracle 2026 &nbsp;·&nbsp; "
+    "Turma 1TSCO<br>"
+    "Fontes: SIH/SUS e CNES (Ministério da Saúde), Censo IBGE 2022 e CID-10 "
+    "Capítulo V &nbsp;·&nbsp; "
+    "Dados públicos e agregados, sem identificação de pacientes"
     "</div>",
     unsafe_allow_html=True,
 )

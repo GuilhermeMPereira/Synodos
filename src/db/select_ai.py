@@ -341,8 +341,13 @@ class MotorLocal:
         return self.con.execute(sql).fetchdf(), sql, intencao
 
 
+def fmt_dec(valor, casas: int = 2) -> str:
+    """Decimal no padrao brasileiro: 11.38 -> 11,38"""
+    return f"{float(valor):.{casas}f}".replace(".", ",")
+
+
 def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
-    """Transforma o resultado em uma frase de leitura rapida."""
+    """Transforma o resultado em uma frase de leitura rapida, em pt-BR."""
     if df.empty:
         return "Nenhum registro encontrado para essa pergunta."
 
@@ -350,48 +355,66 @@ def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
 
     if intencao.nome == "pressao_assistencial":
         return (
-            f"O estado sob maior pressao assistencial e {linha['estado']} "
-            f"({linha['regiao']}), com indice {linha['indice_pressao']} "
-            f"({linha['classificacao']}): {linha['internacoes_por_10k_ano']} "
-            f"internacoes por 10 mil habitantes/ano, permanencia media de "
-            f"{linha['permanencia_media']} dias e apenas "
-            f"{linha['leitos_por_10k_hab']} leitos por 10 mil habitantes."
+            f"O estado sob maior pressão assistencial é {linha['estado']} "
+            f"({linha['regiao']}), com índice "
+            f"{fmt_dec(linha['indice_pressao'], 1)} "
+            f"({linha['classificacao']}): "
+            f"{fmt_dec(linha['internacoes_por_10k_ano'])} internações por "
+            f"10 mil habitantes por ano, permanência média de "
+            f"{fmt_dec(linha['permanencia_media'], 1)} dias e apenas "
+            f"{fmt_dec(linha['leitos_por_10k_hab'])} leitos por 10 mil "
+            f"habitantes."
         )
     if intencao.nome == "taxa_por_habitante":
         return (
-            f"{linha['estado']} lidera em internacoes proporcionais: "
-            f"{linha['internacoes_por_10k_ano']} por 10 mil habitantes/ano, "
-            f"totalizando {fmt_int(linha['qt_internacoes'])} internacoes."
+            f"{linha['estado']} lidera em internações proporcionais: "
+            f"{fmt_dec(linha['internacoes_por_10k_ano'])} por 10 mil "
+            f"habitantes por ano, totalizando "
+            f"{fmt_int(linha['qt_internacoes'])} internações."
         )
     if intencao.nome == "diagnosticos":
         return (
-            f"O diagnostico mais frequente e {linha['descricao']} "
-            f"({linha['cid']}), com {linha['pct_internacoes']}% das "
-            f"internacoes e permanencia media de "
-            f"{linha['permanencia_media']} dias."
+            f"O diagnóstico mais frequente é {linha['descricao']} "
+            f"({linha['cid']}), com "
+            f"{fmt_dec(linha['pct_internacoes'], 1)}% das internações e "
+            f"permanência média de "
+            f"{fmt_dec(linha['permanencia_media'], 1)} dias."
         )
     if intencao.nome == "evolucao_temporal":
         ultimo = df.iloc[-1]
         pico = df.loc[df["qt_internacoes"].idxmax()]
         return (
-            f"A serie vai de {linha['competencia']} a "
+            f"A série vai de {linha['competencia']} a "
             f"{ultimo['competencia']}. O pico ocorreu em "
             f"{pico['competencia']}, com "
-            f"{fmt_int(pico['qt_internacoes'])} internacoes."
+            f"{fmt_int(pico['qt_internacoes'])} internações."
         )
     if intencao.nome == "rede_leitos":
         return (
-            f"{linha['estado']} apresenta a maior ocupacao estimada: "
-            f"{linha['taxa_ocupacao_pct']}%, com "
+            f"{linha['estado']} apresenta a maior ocupação estimada: "
+            f"{fmt_dec(linha['taxa_ocupacao_pct'], 1)}%, com "
             f"{fmt_int(linha['qt_leitos'])} leitos e "
             f"{int(linha['qt_caps'])} CAPS."
         )
+    if intencao.nome == "custo":
+        return (
+            f"{linha['estado']} tem o maior custo total: "
+            f"R$ {fmt_moeda(linha['custo_total'])}, o equivalente a "
+            f"R$ {fmt_dec(linha['custo_per_capita'])} por habitante."
+        )
+    if intencao.nome == "perfil_demografico":
+        return (
+            f"A faixa de {linha['faixa_etaria']} anos, sexo "
+            f"{str(linha['sexo']).lower()}, concentra o maior volume: "
+            f"{fmt_int(linha['qt_internacoes'])} internações "
+            f"({fmt_dec(linha['pct'], 1)}% do total)."
+        )
     if intencao.nome == "panorama":
         return (
-            f"Foram {fmt_int(linha['total_internacoes'])} internacoes em "
-            f"{int(linha['competencias'])} competencias e "
-            f"{int(linha['estados'])} estados, permanencia media de "
-            f"{linha['permanencia_media']} dias e custo total de "
+            f"Foram {fmt_int(linha['total_internacoes'])} internações em "
+            f"{int(linha['competencias'])} competências e "
+            f"{int(linha['estados'])} estados, com permanência média de "
+            f"{fmt_dec(linha['permanencia_media'], 1)} dias e custo total de "
             f"R$ {fmt_moeda(linha['custo_total'])}."
         )
 
