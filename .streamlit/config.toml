@@ -1,8 +1,10 @@
+# Identidade visual do Synodos: preto e ambar sobre fundo branco.
+# As cores exatas vieram do prototipo da Sprint 1.
 [theme]
 base = "light"
-primaryColor = "#2a78d6"
-backgroundColor = "#fcfcfb"
-secondaryBackgroundColor = "#f2f1ec"
+primaryColor = "#e7c12e"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f6f6"
 textColor = "#0b0b0b"
 
 [server]

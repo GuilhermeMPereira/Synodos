@@ -19,34 +19,59 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
 # ------------------------------------------------------------ superficies
-SURFACE = "#fcfcfb"
+SURFACE = "#ffffff"
 TEXT_PRIMARY = "#0b0b0b"
-TEXT_SECONDARY = "#52514e"
-TEXT_MUTED = "#8a8880"
-GRID = "#e5e4df"
+TEXT_SECONDARY = "#5c5952"
+TEXT_MUTED = "#8a8580"
+GRID = "#e6e4e0"
 
-# ------------------------------------------------ paleta categorica (ordem fixa)
-SERIES = [
-    "#2a78d6",  # 1 azul
-    "#eb6834",  # 2 laranja
-    "#1baf7a",  # 3 aqua
-    "#eda100",  # 4 amarelo
-    "#e87ba4",  # 5 magenta
-    "#008300",  # 6 verde
-    "#4a3aa7",  # 7 violeta
-    "#e34948",  # 8 vermelho
+# ------------------------------------------------------- cores da marca
+PRETO = "#0b0b0b"
+AMBAR = "#e7c12e"
+AMBAR_ESCURO = "#b8860b"
+CINZA = "#8a8580"
+
+# ------------------------------------------------ paleta categorica
+# Sistema monocromatico com um acento, herdado do prototipo da Sprint 1.
+# O par preto/ambar tem Delta E 66,9 em daltonismo e 68,9 em visao normal.
+SERIES = [PRETO, AMBAR, CINZA, AMBAR_ESCURO]
+
+# ------------------------------------------------------- escala de status
+# Ordinal: cinza neutro para "sem alarme", escurecendo com a gravidade.
+# O dicionario aceita as duas grafias de "Critica" porque os CSV gerados
+# pelo pipeline usam a forma sem acento; para montar legendas, use
+# STATUS_ORDEM, que nao tem duplicatas.
+STATUS_ORDEM = [
+    ("Baixa", CINZA),
+    ("Moderada", AMBAR),
+    ("Alta", AMBAR_ESCURO),
+    ("Crítica", PRETO),
 ]
-
-# ------------------------------------------------------- paleta de status
-STATUS = {
-    "Baixa": "#1baf7a",
-    "Moderada": "#eda100",
-    "Alta": "#eb6834",
-    "Critica": "#e34948",
-}
+STATUS = {nome: cor for nome, cor in STATUS_ORDEM}
+STATUS["Critica"] = PRETO
 
 # ----------------------------------------------- rampa sequencial (um tom)
-SEQUENCIAL = ["#d6e4f7", "#a9c6ee", "#7aa7e2", "#4a8bd9", "#2a78d6", "#1c5aa3"]
+SEQUENCIAL = ["#fdf3cd", "#f6e08c", "#e7c12e", "#c9a013", "#9b7a0d", "#6b5308"]
+
+# --------------------------------------------------- rampa divergente
+# Correlacao e um dado divergente (negativo, zero, positivo), entao exige
+# dois polos com um neutro no meio - nao da para resolver so com o ambar.
+# Usamos ardosia para o polo negativo e o ambar da marca para o positivo,
+# com cinza neutro no zero.
+DIVERGENTE_NEGATIVO = "#2f4858"
+DIVERGENTE_NEUTRO = "#ecebe7"
+DIVERGENTE_POSITIVO = "#b8860b"
+
+
+def mapa_divergente():
+    """Colormap divergente na identidade do projeto."""
+    from matplotlib.colors import LinearSegmentedColormap
+
+    return LinearSegmentedColormap.from_list(
+        "synodos_div",
+        [DIVERGENTE_NEGATIVO, "#7b8b96", DIVERGENTE_NEUTRO,
+         "#d8b968", DIVERGENTE_POSITIVO],
+    )
 
 
 def aplicar_estilo() -> None:

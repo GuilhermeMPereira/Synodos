@@ -179,22 +179,29 @@ def g_pressao(pressao: pd.DataFrame) -> Path:
     cores = [estilo.STATUS.get(c, estilo.SERIES[0])
              for c in df["classificacao"]]
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.barh(df["nm_uf"], df["indice_pressao"], color=cores, height=0.6)
+    # A altura acompanha o numero de estados: com os 27 na tela, uma altura
+    # fixa esmaga os rotulos.
+    altura = max(5.0, len(df) * 0.30 + 1.6)
+    fig, ax = plt.subplots(figsize=(10, altura))
+    ax.barh(df["nm_uf"], df["indice_pressao"], color=cores, height=0.68)
 
     for i, (v, c) in enumerate(zip(df["indice_pressao"], df["classificacao"])):
-        ax.text(v + 1.2, i, f"{v:.0f}  ({c})", va="center", fontsize=9,
+        ax.text(v + 1.5, i, f"{v:.0f}  ·  {c}", va="center", fontsize=8.5,
                 fontweight="bold", color=estilo.TEXT_PRIMARY)
 
     ax.set_xlabel("Indice de Pressao Assistencial (0 a 100)")
-    ax.set_xlim(0, 100)
+    ax.set_xlim(0, 118)
+    ax.set_ylim(-0.8, len(df) - 0.2)
     ax.grid(axis="y", visible=False)
 
-    # Legenda de status: identidade nao depende so da cor
+    # Legenda de status acima do grafico, para nao cobrir barra nenhuma.
+    # STATUS_ORDEM evita a duplicata das duas grafias de "Critica".
     from matplotlib.patches import Patch
     ax.legend(
-        handles=[Patch(facecolor=v, label=k) for k, v in estilo.STATUS.items()],
-        loc="lower right", ncols=4, title=None,
+        handles=[Patch(facecolor=cor, label=nome)
+                 for nome, cor in estilo.STATUS_ORDEM],
+        loc="lower right", bbox_to_anchor=(1.0, 1.0), ncols=4,
+        title=None, frameon=False,
     )
 
     estilo.titular(
@@ -225,7 +232,7 @@ def g_distribuicao(df: pd.DataFrame) -> Path:
     )
     ax.axvline(perm.mean(), color=estilo.SERIES[1], linewidth=2,
                label=f"Media: {perm.mean():.1f} dias")
-    ax.axvline(perm.median(), color=estilo.SERIES[7], linewidth=2,
+    ax.axvline(perm.median(), color=estilo.SERIES[2], linewidth=2,
                linestyle="--", label=f"Mediana: {perm.median():.0f} dias")
     ax.set_xlabel("Dias de permanencia")
     ax.set_ylabel("Internacoes")
@@ -277,7 +284,7 @@ def g_correlacao(pressao: pd.DataFrame) -> tuple[Path, pd.DataFrame]:
     corr = base.corr(method="spearman")
 
     fig, ax = plt.subplots(figsize=(7.2, 6))
-    im = ax.imshow(corr, cmap="RdBu_r", vmin=-1, vmax=1)
+    im = ax.imshow(corr, cmap=estilo.mapa_divergente(), vmin=-1, vmax=1)
 
     ax.set_xticks(range(len(corr)), corr.columns, rotation=40, ha="right")
     ax.set_yticks(range(len(corr)), corr.columns)
@@ -289,7 +296,7 @@ def g_correlacao(pressao: pd.DataFrame) -> tuple[Path, pd.DataFrame]:
             ax.text(
                 j, i, f"{v:.2f}", ha="center", va="center", fontsize=9,
                 fontweight="bold",
-                color="white" if abs(v) > 0.55 else estilo.TEXT_PRIMARY,
+                color="white" if abs(v) > 0.62 else estilo.TEXT_PRIMARY,
             )
 
     cb = fig.colorbar(im, ax=ax, shrink=0.8)

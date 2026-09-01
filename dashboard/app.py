@@ -25,14 +25,37 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import settings  # noqa: E402
 
 # ------------------------------------------------------------------ paleta
-# Paleta categorica validada para daltonismo e contraste sobre fundo claro.
-SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100",
-          "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
-STATUS = {"Baixa": "#1baf7a", "Moderada": "#eda100",
-          "Alta": "#eb6834", "Crítica": "#e34948"}
-TEXT_SECONDARY = "#52514e"
-TEXT_MUTED = "#8a8880"
-GRID = "#e5e4df"
+# Identidade visual do Synodos: preto e ambar, herdada do prototipo da
+# Sprint 1. E um sistema monocromatico com um unico acento, entao a
+# diferenciacao vem da luminosidade, nao da variedade de matizes.
+PRETO = "#0b0b0b"
+AMBAR = "#e7c12e"
+AMBAR_ESCURO = "#b8860b"
+CINZA = "#8a8580"
+
+# Paleta categorica. Os graficos deste painel usam no maximo DUAS series
+# simultaneas, e o par preto/ambar tem separacao folgada: Delta E 66,9 em
+# visao com daltonismo e 68,9 em visao normal, muito acima dos pisos de 8
+# e 15. Os dois ultimos tons existem para eventuais terceiras series.
+SERIES = [PRETO, AMBAR, CINZA, AMBAR_ESCURO]
+
+# Escala de status, ordinal. Comeca no cinza neutro (sem alarme) e escurece
+# conforme a gravidade. O rotulo textual acompanha sempre a barra, entao a
+# identidade nunca depende so da cor - o que atende a regra de alivio para
+# o ambar, que fica abaixo de 3:1 de contraste sobre fundo branco.
+STATUS = {
+    "Baixa": CINZA,
+    "Moderada": AMBAR,
+    "Alta": AMBAR_ESCURO,
+    "Crítica": PRETO,
+}
+
+SUPERFICIE = "#ffffff"
+SUPERFICIE_CARD = "#f6f6f6"
+TEXT_SECONDARY = "#5c5952"
+TEXT_MUTED = "#8a8580"
+GRID = "#e6e4e0"
+BORDA = "#dedede"
 
 st.set_page_config(
     page_title="Synodos | Painel de Saúde Mental",
@@ -44,21 +67,73 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-      .block-container {padding-top: 2.5rem; padding-bottom: 3rem;
-                        max-width: 1500px;}
-      [data-testid="stMetricValue"] {font-size: 1.9rem; font-weight: 600;}
-      [data-testid="stMetricLabel"] {font-size: 0.8rem; color: #52514e;}
-      h1 {font-size: 1.85rem !important; margin-bottom: 0.2rem !important;}
-      h3 {font-size: 1.15rem !important;}
-      .stTabs [data-baseweb="tab-list"] {gap: 1.6rem;}
-      .stTabs [data-baseweb="tab"] {padding: 0.4rem 0;}
-      .titulo-grafico {font-size: 1.02rem; font-weight: 600; color: #0b0b0b;
+      /* ---------------------------------------------- estrutura da pagina */
+      .block-container {padding-top: 1.2rem; padding-bottom: 3rem;
+                        max-width: 1560px;}
+      .stApp {background: #ffffff;}
+
+      /* ------------------------------- barra lateral preta, como no topo */
+      [data-testid="stSidebar"] {background: #0b0b0b;}
+      [data-testid="stSidebar"] * {color: #eceae5;}
+      [data-testid="stSidebar"] h1 {color: #e7c12e !important;
+                                    font-size: 1.5rem !important;
+                                    letter-spacing: 0.02em;}
+      [data-testid="stSidebar"] label,
+      [data-testid="stSidebar"] .stMarkdown p {color: #b9b5ad !important;
+                                               font-size: 0.82rem;}
+      [data-testid="stSidebar"] hr {border-color: #262626;}
+      /* campos de filtro sobre fundo escuro */
+      [data-testid="stSidebar"] [data-baseweb="select"] > div,
+      [data-testid="stSidebar"] [data-baseweb="input"] > div {
+          background: #1a1a1a; border-color: #333330;}
+      /* chips dos multiselect em ambar */
+      [data-testid="stSidebar"] [data-baseweb="tag"] {
+          background: #e7c12e !important;}
+      [data-testid="stSidebar"] [data-baseweb="tag"] span {
+          color: #0b0b0b !important; font-weight: 600;}
+      [data-testid="stSidebar"] [data-testid="stMetricValue"] {
+          color: #ffffff !important;}
+
+      /* -------------------------------------------- faixa preta do topo */
+      .faixa-topo {background: #0b0b0b; color: #ffffff;
+                   margin: -1.2rem -3rem 1.6rem -3rem;
+                   padding: 1.1rem 3rem 1.2rem 3rem;}
+      .faixa-topo .marca {color: #e7c12e; font-size: 0.72rem;
+                          font-weight: 700; letter-spacing: 0.16em;
+                          text-transform: uppercase;}
+      .faixa-topo h1 {color: #ffffff !important; font-size: 1.7rem !important;
+                      font-weight: 700; margin: 0.35rem 0 0.3rem 0 !important;}
+      .faixa-topo .legenda {color: #a8a49c; font-size: 0.86rem;
+                            line-height: 1.45;}
+
+      /* ------------------------------------------------------ indicadores */
+      [data-testid="stMetricValue"] {font-size: 1.95rem; font-weight: 700;
+                                     color: #0b0b0b;}
+      [data-testid="stMetricLabel"] {font-size: 0.78rem; color: #5c5952;}
+
+      /* ------------------------------------------------------------ abas */
+      .stTabs [data-baseweb="tab-list"] {gap: 1.9rem;
+                                         border-bottom: 1px solid #e6e4e0;}
+      .stTabs [data-baseweb="tab"] {padding: 0.5rem 0; font-weight: 500;}
+      .stTabs [aria-selected="true"] {color: #0b0b0b !important;}
+      .stTabs [data-baseweb="tab-highlight"] {background: #e7c12e;}
+
+      /* ------------------------------------------------ cartoes e blocos */
+      [data-testid="stVerticalBlockBorderWrapper"] {
+          background: #fbfbfa; border-radius: 10px;}
+      h3 {font-size: 1.15rem !important; color: #0b0b0b;}
+      .titulo-grafico {font-size: 1.02rem; font-weight: 700; color: #0b0b0b;
                        margin: 0.1rem 0 0.15rem 0;}
-      .sub-grafico {font-size: 0.82rem; color: #52514e;
+      .sub-grafico {font-size: 0.82rem; color: #5c5952;
                     margin: 0 0 0.6rem 0; line-height: 1.35;}
-      .rodape {color:#8a8880; font-size:0.78rem; margin-top:3rem;
-               border-top:1px solid #e5e4df; padding-top:1rem;
+      .rodape {color:#8a8580; font-size:0.78rem; margin-top:3rem;
+               border-top:1px solid #e6e4e0; padding-top:1rem;
                line-height: 1.6;}
+
+      /* --------------------------------------------------------- botoes */
+      .stButton button {border-color: #dedede; color: #0b0b0b;}
+      .stButton button:hover {border-color: #e7c12e; color: #0b0b0b;
+                              background: #fffbe9;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -211,14 +286,14 @@ def layout_grafico(fig, altura: int = 360, legenda: bool = False):
         margin=dict(l=8, r=24, t=12, b=8),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=12, color=TEXT_SECONDARY),
+        font=dict(size=12, color=TEXT_SECONDARY, family="Inter, -apple-system, Segoe UI, Roboto, sans-serif"),
         # Localizacao brasileira: virgula decimal e ponto de milhar.
         # O primeiro caractere e o separador decimal, o segundo o de milhar.
         # Vale para os rotulos das barras e para os tooltips.
         separators=",.",
         showlegend=legenda,
         legend=dict(
-            orientation="h", yanchor="top", y=-0.18,
+            orientation="h", yanchor="top", y=-0.24,
             xanchor="left", x=0, title=None,
         ),
         hoverlabel=dict(font_size=12),
@@ -348,10 +423,15 @@ if f.empty:
 
 
 # ------------------------------------------------------------------ cabecalho
-st.title("Painel de Acesso Hospitalar em Saúde Mental")
-st.caption(
-    "Internações do SUS por transtornos mentais e comportamentais "
-    "(CID-10, Capítulo V), integradas ao cadastro da rede e à população IBGE"
+st.markdown(
+    '<div class="faixa-topo">'
+    '<div class="marca">SUS Saúde Mental · Painel Integrado</div>'
+    "<h1>Painel de Acesso Hospitalar em Saúde Mental</h1>"
+    '<div class="legenda">Internações do SUS por transtornos mentais e '
+    "comportamentais (CID-10, Capítulo V), integradas ao cadastro da rede "
+    "e à população IBGE</div>"
+    "</div>",
+    unsafe_allow_html=True,
 )
 with st.expander("Como usar este painel", expanded=False):
     st.markdown(
@@ -472,6 +552,14 @@ with abas[0]:
                 hovertemplate="%{x}<br>média %{y:,.0f}<extra></extra>",
             ))
             fig.update_yaxes(title_text="Internações")
+            # Com 24 competencias os rotulos ficam verticais e colidem com a
+            # legenda. Mostrar um a cada tres mantem tudo na horizontal.
+            passo = max(1, len(serie) // 8)
+            fig.update_xaxes(
+                tickmode="array",
+                tickvals=serie["rotulo"].iloc[::passo].tolist(),
+                tickangle=0,
+            )
             st.plotly_chart(
                 layout_grafico(fig, 380, legenda=True), width="stretch"
             )
@@ -557,7 +645,7 @@ with abas[0]:
                 fig.add_trace(go.Scatter(
                     x=proj["rotulo"], y=proj["limite_inferior"],
                     mode="lines", line=dict(width=0), fill="tonexty",
-                    fillcolor="rgba(235,104,52,0.16)",
+                    fillcolor="rgba(231,193,46,0.28)",
                     name="Intervalo de confiança 95%", hoverinfo="skip",
                 ))
                 fig.add_trace(go.Scatter(
@@ -568,6 +656,7 @@ with abas[0]:
                     hovertemplate="%{x}<br>%{y:,.0f} previstas<extra></extra>",
                 ))
                 fig.update_yaxes(title_text="Internações")
+                fig.update_xaxes(tickangle=0)
                 st.plotly_chart(
                     layout_grafico(fig, 340, legenda=True), width="stretch"
                 )
