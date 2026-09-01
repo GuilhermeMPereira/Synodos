@@ -67,24 +67,128 @@ def normalizar(texto: str) -> str:
 # ===========================================================================
 # MODO ORACLE
 # ===========================================================================
-def perguntar_oracle(pergunta: str, acao: str = "runsql") -> pd.DataFrame:
-    """Envia a pergunta ao Oracle Select AI."""
+def limpar_sql_gerado(sql: str) -> str:
+    """
+    O Select AI as vezes devolve o SQL embrulhado em cerca de markdown ou
+    com ponto e virgula final. Nenhum dos dois pode ir para o cursor.
+    """
+    sql = (sql or "").strip()
+    if sql.startswith("```"):
+        sql = re.sub(r"^```[a-zA-Z]*\s*", "", sql)
+        sql = re.sub(r"```\s*$", "", sql)
+    return sql.strip().rstrip(";").strip()
+
+
+def _ler_lob(valor):
+    """Converte LOB do Oracle em texto."""
+    return valor.read() if hasattr(valor, "read") else valor
+
+
+def gerar_sql_oracle(cur, pergunta: str) -> str:
+    """Pede ao Select AI apenas o SQL, sem executar."""
+    cur.execute(
+        """SELECT DBMS_CLOUD_AI.GENERATE(
+               prompt       => :1,
+               profile_name => :2,
+               action       => 'showsql'
+           ) FROM DUAL""",
+        [pergunta, settings.SELECT_AI_PROFILE],
+    )
+    (sql,) = cur.fetchone()
+    return limpar_sql_gerado(_ler_lob(sql))
+
+
+def narrar_oracle(cur, pergunta: str) -> str:
+    """Resposta em texto corrido, gerada pelo modelo a partir dos dados."""
+    cur.execute(
+        """SELECT DBMS_CLOUD_AI.GENERATE(
+               prompt       => :1,
+               profile_name => :2,
+               action       => 'narrate'
+           ) FROM DUAL""",
+        [pergunta, settings.SELECT_AI_PROFILE],
+    )
+    (texto,) = cur.fetchone()
+    return (_ler_lob(texto) or "").strip()
+
+
+def conversar_oracle(cur, pergunta: str) -> str:
+    """
+    Acao 'chat': o modelo responde com o proprio conhecimento, SEM consultar
+    a base. Usamos so quando a pergunta nao e sobre os dados - e a resposta
+    e rotulada como tal na interface, porque aqui, sim, o numero viria do
+    modelo e nao do banco.
+    """
+    cur.execute(
+        """SELECT DBMS_CLOUD_AI.GENERATE(
+               prompt       => :1,
+               profile_name => :2,
+               action       => 'chat'
+           ) FROM DUAL""",
+        [pergunta, settings.SELECT_AI_PROFILE],
+    )
+    (texto,) = cur.fetchone()
+    return (_ler_lob(texto) or "").strip()
+
+
+def perguntar_oracle(
+    pergunta: str, com_narrativa: bool = True
+) -> dict:
+    """
+    Consulta o Oracle Select AI, com liberdade total de pergunta.
+
+    O caminho principal e em duas etapas: pedimos ao modelo apenas o SQL
+    (acao 'showsql') e o proprio banco executa essa consulta. E melhor do
+    que usar 'runsql' direto por dois motivos: o resultado volta como
+    tabela de verdade, e nao como texto; e ficamos com o SQL em maos para
+    exibir ao gestor, que e o que torna a resposta auditavel.
+
+    Se a pergunta nao for sobre os dados - "o que e esquizofrenia", por
+    exemplo - a geracao de SQL falha, e caimos na acao 'chat'. A interface
+    deixa claro que essa resposta veio do conhecimento do modelo e nao da
+    base, porque a distincao importa para a confianca do gestor.
+    """
     from src.db.oracle_conn import cursor
 
     with cursor() as cur:
-        cur.execute(
-            """SELECT DBMS_CLOUD_AI.GENERATE(
-                   prompt       => :1,
-                   profile_name => :2,
-                   action       => :3
-               ) FROM DUAL""",
-            [pergunta, settings.SELECT_AI_PROFILE, acao],
-        )
-        (resultado,) = cur.fetchone()
-        if hasattr(resultado, "read"):
-            resultado = resultado.read()
+        try:
+            sql = gerar_sql_oracle(cur, pergunta)
+            if not sql.lower().lstrip().startswith(("select", "with")):
+                raise RuntimeError("resposta nao e uma consulta")
 
-    return pd.DataFrame({"resposta": [resultado]})
+            cur.execute(sql)
+            colunas = [d[0].lower() for d in cur.description]
+            linhas = [
+                tuple(_ler_lob(v) for v in linha) for linha in cur.fetchall()
+            ]
+            df = pd.DataFrame(linhas, columns=colunas)
+
+            narrativa = None
+            if com_narrativa:
+                try:
+                    narrativa = narrar_oracle(cur, pergunta)
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Narrativa indisponivel: %s", exc)
+
+            return {
+                "origem": "dados",
+                "resultado": df,
+                "sql": sql,
+                "narrativa": narrativa,
+            }
+
+        except Exception as exc:  # noqa: BLE001
+            # Nao deu para responder com os dados. Pode ser uma pergunta
+            # conceitual, ou fora do escopo das views expostas ao perfil.
+            log.info("Sem SQL para '%s' (%s). Tentando conversa.",
+                     pergunta[:60], exc)
+            texto = conversar_oracle(cur, pergunta)
+            return {
+                "origem": "conhecimento_do_modelo",
+                "resultado": pd.DataFrame(),
+                "sql": None,
+                "narrativa": texto,
+            }
 
 
 # ===========================================================================
@@ -421,27 +525,49 @@ def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
     return f"{len(df)} registros retornados para: {intencao.descricao}."
 
 
-def perguntar(
-    pergunta: str, forcar_local: bool = False
-) -> dict:
-    """Interface unica. Tenta o Oracle; cai para o modo local."""
-    if not forcar_local and settings.ORACLE_PASSWORD:
+def oracle_disponivel() -> bool:
+    """Ha credenciais de Oracle configuradas no .env?"""
+    return bool(settings.ORACLE_PASSWORD and settings.ORACLE_DSN)
+
+
+def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
+    """
+    Interface unica de perguntas em linguagem natural.
+
+    Tenta o Oracle Select AI quando ha credenciais configuradas; se algo
+    falhar (banco parado, perfil ausente, sem rede), cai para o modo local
+    sem quebrar a aplicacao. O campo "modo" no retorno diz qual respondeu.
+    """
+    if not forcar_local and oracle_disponivel():
         try:
-            df = perguntar_oracle(pergunta, "runsql")
-            return {"modo": "oracle", "pergunta": pergunta,
-                    "resultado": df, "sql": None, "narrativa": None}
+            r = perguntar_oracle(pergunta)
+            return {
+                "modo": "oracle",
+                "origem": r["origem"],
+                "pergunta": pergunta,
+                "intencao": None,
+                "sql": r["sql"],
+                "resultado": r["resultado"],
+                "narrativa": r["narrativa"],
+                "erro_oracle": None,
+            }
         except Exception as exc:  # noqa: BLE001
-            log.warning("Oracle indisponivel (%s). Usando modo local.", exc)
+            log.warning("Select AI indisponivel (%s). Usando modo local.", exc)
+            erro = str(exc)
+    else:
+        erro = None
 
     motor = MotorLocal()
     df, sql, intencao = motor.perguntar(pergunta)
     return {
         "modo": "local",
+        "origem": "dados",
         "pergunta": pergunta,
         "intencao": intencao.nome,
         "sql": sql,
         "resultado": df,
         "narrativa": narrar(df, intencao),
+        "erro_oracle": erro,
     }
 
 

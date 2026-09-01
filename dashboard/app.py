@@ -910,7 +910,7 @@ with abas[3]:
     if "pergunta" not in st.session_state:
         st.session_state.pergunta = sugestoes[0]
 
-    st.markdown('<div class="sub-grafico">Sugestões</div>',
+    st.markdown('<div class="sub-grafico">Sugestões para começar — mas você pode perguntar o que quiser</div>',
                 unsafe_allow_html=True)
     cols = st.columns(3)
     for i, s in enumerate(sugestoes):
@@ -926,28 +926,82 @@ with abas[3]:
 
     if pergunta:
         try:
-            from src.db.select_ai import perguntar
+            from src.db.select_ai import oracle_disponivel, perguntar
 
-            r = perguntar(pergunta, forcar_local=True)
+            usar_oracle = False
+            if oracle_disponivel():
+                usar_oracle = st.toggle(
+                    "Usar Oracle Select AI", value=True,
+                    help="Ligado, a pergunta vai ao Oracle Autonomous "
+                         "Database: um modelo de linguagem escreve o SQL e "
+                         "o banco executa. Desligado, responde pelo motor "
+                         "local de demonstração.",
+                )
+
+            with st.spinner("Consultando..."):
+                r = perguntar(pergunta, forcar_local=not usar_oracle)
+
+            origem_resposta = r.get("origem", "dados")
+
+            if r["modo"] == "oracle" and origem_resposta == "dados":
+                st.caption(
+                    "🟢 **Oracle Select AI** — a pergunta virou SQL, e o "
+                    "banco executou. Os números abaixo vêm dos dados."
+                )
+            elif r["modo"] == "oracle":
+                st.caption(
+                    "🔵 **Oracle Select AI** — pergunta conceitual, "
+                    "respondida pelo modelo de linguagem."
+                )
+            elif r.get("erro_oracle"):
+                st.warning(
+                    "O Oracle não respondeu, então a consulta foi feita "
+                    f"pelo motor local. Detalhe: {r['erro_oracle'][:200]}"
+                )
 
             if r.get("narrativa"):
-                st.success(r["narrativa"])
+                if origem_resposta == "dados":
+                    st.success(r["narrativa"])
+                else:
+                    st.info(r["narrativa"])
 
-            with st.container(border=True):
-                titulo("Resultado da consulta")
-                st.dataframe(
-                    r["resultado"].rename(columns=COLUNAS_LEGIVEIS),
-                    hide_index=True, width="stretch",
+            if origem_resposta == "conhecimento_do_modelo":
+                # A distincao importa: aqui o texto veio do modelo, nao da
+                # base. Deixar isso explicito e o que sustenta a confianca
+                # nas outras respostas.
+                st.warning(
+                    "Esta resposta **não foi consultada na base de dados**. "
+                    "Ela veio do conhecimento do modelo de linguagem, porque "
+                    "a pergunta não pôde ser traduzida em uma consulta sobre "
+                    "os dados do painel. Para números, pergunte sobre "
+                    "internações, leitos, estados, diagnósticos ou custos.",
+                    icon="⚠️",
                 )
+            else:
+                with st.container(border=True):
+                    titulo("Resultado da consulta")
+                    st.dataframe(
+                        r["resultado"].rename(columns=COLUNAS_LEGIVEIS),
+                        hide_index=True, width="stretch",
+                    )
 
-            with st.expander("Ver o SQL que foi gerado e executado"):
-                st.code(r["sql"], language="sql")
-                st.caption(
-                    f"Intenção reconhecida: `{r.get('intencao')}`  |  "
-                    f"modo: `{r['modo']}`  |  "
-                    "o resultado acima veio da execução deste SQL, "
-                    "não do modelo de linguagem."
-                )
+                with st.expander("Ver o SQL que foi gerado e executado",
+                                 expanded=(r["modo"] == "oracle")):
+                    st.code(r["sql"], language="sql")
+                    if r["modo"] == "oracle":
+                        st.caption(
+                            "Gerado pelo **Oracle Select AI** a partir da "
+                            "pergunta em português e executado no Autonomous "
+                            "Database. Os números vêm do banco, não do "
+                            "modelo de linguagem — por isso a resposta é "
+                            "auditável."
+                        )
+                    else:
+                        st.caption(
+                            f"Intenção reconhecida: `{r.get('intencao')}`  |  "
+                            "modo local de demonstração  |  o resultado "
+                            "acima veio da execução deste SQL."
+                        )
         except Exception as exc:  # noqa: BLE001
             st.error(f"Não foi possível responder: {exc}")
 
