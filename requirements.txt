@@ -28,6 +28,11 @@ streamlit>=1.40.0
 # --- planilhas -------------------------------------------------------------
 openpyxl>=3.1.0
 
+# --- Oracle Autonomous Database e Select AI --------------------------------
+# Driver thin: nao exige Oracle Client instalado, funciona no deploy em nuvem.
+# E necessario para a aba "Perguntar aos dados" usar o Select AI.
+oracledb>=2.0.0
+
 # ===========================================================================
 # OPCIONAIS - instale sob demanda, nao sao necessarios para rodar o painel
 # ===========================================================================
@@ -35,9 +40,6 @@ openpyxl>=3.1.0
 # Fica fora da lista principal porque tem dependencias de sistema que
 # quebram builds em ambientes de deploy em nuvem.
 #   pip install pysus
-#
-# Driver Oracle, para a carga no Autonomous Database e o Select AI:
-#   pip install oracledb
 #
 # Notebook de analise exploratoria:
 #   pip install jupyter nbconvert

@@ -1,13 +1,13 @@
 {
   "clusterizacao": {
-    "k_escolhido": 4,
+    "k_escolhido": 2,
     "silhueta_por_k": {
-      "2": 0.301,
-      "3": 0.325,
-      "4": 0.397,
-      "5": 0.306
+      "2": 0.52,
+      "3": 0.305,
+      "4": 0.351,
+      "5": 0.353
     },
-    "silhueta_final": 0.397,
+    "silhueta_final": 0.52,
     "atributos": [
       "internacoes_por_10k_ano",
       "permanencia_media",
@@ -15,20 +15,20 @@
       "taxa_ocupacao_pct",
       "caps_por_100k_hab"
     ],
-    "inercia": 4.05
+    "inercia": 94.27
   },
   "projecao": {
-    "r2": 0.9883,
-    "mape_validacao_pct": 0.98,
-    "erro_padrao_residuos": 133.0,
-    "tendencia_por_mes": 51.7,
-    "tendencia_anualizada_pct": 6.3,
-    "crescimento_yoy_projetado_pct": 6.3,
+    "r2": 0.9976,
+    "mape_validacao_pct": 0.88,
+    "erro_padrao_residuos": 107.2,
+    "tendencia_por_mes": 78.5,
+    "tendencia_anualizada_pct": 5.2,
+    "crescimento_yoy_projetado_pct": 4.8,
     "horizonte_meses": 6
   },
   "decomposicao": {
-    "forca_tendencia": 1.0,
-    "forca_sazonalidade": 1.0,
+    "forca_tendencia": 0.991,
+    "forca_sazonalidade": 0.999,
     "mes_pico_sazonal": 6,
     "mes_vale_sazonal": 12
   },
