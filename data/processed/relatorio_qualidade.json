@@ -2,14 +2,14 @@
   "datasets": [
     {
       "dataset": "sih_internacoes",
-      "registros_entrada": 234804,
-      "registros_saida": 234803,
+      "registros_entrada": 438187,
+      "registros_saida": 438181,
       "taxa_aproveitamento_pct": 100.0,
       "regras": [
         {
           "regra": "deduplicacao_por_nu_aih",
-          "registros_removidos": 1,
-          "pct_do_total": 0.0,
+          "registros_removidos": 6,
+          "pct_do_total": 0.001,
           "detalhe": "AIH e a chave natural da internacao"
         },
         {
@@ -46,8 +46,8 @@
     },
     {
       "dataset": "cnes_estabelecimentos",
-      "registros_entrada": 5606,
-      "registros_saida": 5606,
+      "registros_entrada": 9928,
+      "registros_saida": 9928,
       "taxa_aproveitamento_pct": 100.0,
       "regras": [
         {
@@ -66,7 +66,7 @@
           "regra": "leitos_zerados_mantidos",
           "registros_removidos": 0,
           "pct_do_total": 0.0,
-          "detalhe": "4711 unidades ambulatoriais sem leito - mantidas de proposito"
+          "detalhe": "8376 unidades ambulatoriais sem leito - mantidas de proposito"
         }
       ]
     }
@@ -78,17 +78,17 @@
       "iqr": 14.0,
       "limite_inferior": -12.0,
       "limite_superior": 44.0,
-      "qt_outliers": 9672,
-      "pct_outliers": 4.12
+      "qt_outliers": 18342,
+      "pct_outliers": 4.19
     },
     "vl_total_aih": {
-      "q1": 436.415,
-      "q3": 1774.8049999999998,
-      "iqr": 1338.3899999999999,
-      "limite_inferior": -1571.1699999999998,
-      "limite_superior": 3782.3899999999994,
-      "qt_outliers": 15176,
-      "pct_outliers": 6.46
+      "q1": 441.15,
+      "q3": 1780.18,
+      "iqr": 1339.0300000000002,
+      "limite_inferior": -1567.3950000000004,
+      "limite_superior": 3788.7250000000004,
+      "qt_outliers": 28548,
+      "pct_outliers": 6.52
     }
   }
 }

@@ -82,6 +82,14 @@ st.markdown(
       [data-testid="stSidebar"] .stMarkdown p {color: #b9b5ad !important;
                                                font-size: 0.82rem;}
       [data-testid="stSidebar"] hr {border-color: #262626;}
+      /* O slider mostra a selecao atual acima da trilha e os extremos da
+         escala abaixo. Com o intervalo inteiro selecionado, os dois pares
+         ficam iguais e parece duplicado - escondemos os extremos. */
+      [data-testid="stSidebar"] [data-testid="stSliderTickBar"],
+      [data-testid="stSidebar"] [data-testid="stTickBar"],
+      [data-testid="stSidebar"] [data-testid="stSliderTickBarMin"],
+      [data-testid="stSidebar"] [data-testid="stSliderTickBarMax"] {
+          display: none !important;}
       /* campos de filtro sobre fundo escuro */
       [data-testid="stSidebar"] [data-baseweb="select"] > div,
       [data-testid="stSidebar"] [data-baseweb="input"] > div {

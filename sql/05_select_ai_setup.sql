@@ -37,14 +37,17 @@
 --   where request.principal.type = 'autonomousdatabase'
 
 -- ------------------------------------------------------------- PASSO 2
--- Permissoes e resource principal (executar conectado como ADMIN)
-GRANT EXECUTE ON DBMS_CLOUD_AI TO synodos;
-GRANT EXECUTE ON DBMS_CLOUD    TO synodos;
-
--- Habilita o resource principal na instancia e no usuario do projeto.
--- E o que faz existir a credencial OCI$RESOURCE_PRINCIPAL.
+-- Resource principal (executar conectado como ADMIN).
+-- E o que faz existir a credencial OCI$RESOURCE_PRINCIPAL, que dispensa
+-- chave de API paga.
 EXEC DBMS_CLOUD_ADMIN.ENABLE_RESOURCE_PRINCIPAL();
-EXEC DBMS_CLOUD_ADMIN.ENABLE_RESOURCE_PRINCIPAL(username => 'SYNODOS');
+
+-- Se voce criou um usuario separado para o projeto, habilite tambem nele e
+-- conceda as permissoes. Usando o proprio ADMIN (caminho do setup rapido),
+-- as duas linhas abaixo sao desnecessarias.
+-- GRANT EXECUTE ON DBMS_CLOUD_AI TO synodos;
+-- GRANT EXECUTE ON DBMS_CLOUD    TO synodos;
+-- EXEC DBMS_CLOUD_ADMIN.ENABLE_RESOURCE_PRINCIPAL(username => 'SYNODOS');
 
 -- Confere se a credencial ficou disponivel
 SELECT credential_name, username, comments
@@ -64,7 +67,9 @@ WHERE  credential_name = 'OCI$RESOURCE_PRINCIPAL';
 --      escrevemos em 01_ddl_relacional.sql. Sem isso o modelo nao sabe que
 --      F20 e esquizofrenia, e a taxa de acerto despenca.
 --
--- (conectar como SYNODOS a partir daqui)
+-- Os "owner" abaixo estao como ADMIN, que e onde o setup rapido
+-- (sql/00_setup_rapido.sql) cria os objetos. Se voce usou um usuario
+-- SYNODOS separado, troque ADMIN por SYNODOS nas 12 linhas.
 BEGIN
     DBMS_CLOUD_AI.DROP_PROFILE(
         profile_name => 'SYNODOS_AI',
@@ -79,18 +84,18 @@ BEGIN
             "region":          "sa-saopaulo-1",
             "comments":        "true",
             "object_list": [
-                {"owner": "SYNODOS", "name": "VW_PANORAMA_GERAL"},
-                {"owner": "SYNODOS", "name": "VW_SERIE_TEMPORAL"},
-                {"owner": "SYNODOS", "name": "VW_TAXA_POR_UF"},
-                {"owner": "SYNODOS", "name": "VW_PERFIL_DIAGNOSTICO"},
-                {"owner": "SYNODOS", "name": "VW_OCUPACAO_REDE"},
-                {"owner": "SYNODOS", "name": "VW_PRESSAO_ASSISTENCIAL"},
-                {"owner": "SYNODOS", "name": "VW_RANKING_UNIDADES"},
-                {"owner": "SYNODOS", "name": "VW_PERFIL_DEMOGRAFICO"},
-                {"owner": "SYNODOS", "name": "FATO_INTERNACAO"},
-                {"owner": "SYNODOS", "name": "DIM_TERRITORIO"},
-                {"owner": "SYNODOS", "name": "DIM_CID10"},
-                {"owner": "SYNODOS", "name": "DIM_ESTABELECIMENTO"}
+                {"owner": "ADMIN", "name": "VW_PANORAMA_GERAL"},
+                {"owner": "ADMIN", "name": "VW_SERIE_TEMPORAL"},
+                {"owner": "ADMIN", "name": "VW_TAXA_POR_UF"},
+                {"owner": "ADMIN", "name": "VW_PERFIL_DIAGNOSTICO"},
+                {"owner": "ADMIN", "name": "VW_OCUPACAO_REDE"},
+                {"owner": "ADMIN", "name": "VW_PRESSAO_ASSISTENCIAL"},
+                {"owner": "ADMIN", "name": "VW_RANKING_UNIDADES"},
+                {"owner": "ADMIN", "name": "VW_PERFIL_DEMOGRAFICO"},
+                {"owner": "ADMIN", "name": "FATO_INTERNACAO"},
+                {"owner": "ADMIN", "name": "DIM_TERRITORIO"},
+                {"owner": "ADMIN", "name": "DIM_CID10"},
+                {"owner": "ADMIN", "name": "DIM_ESTABELECIMENTO"}
             ]
         }'
     );
@@ -151,15 +156,15 @@ FROM DUAL;
 --             "model":           "gpt-4o-mini",
 --             "comments":        "true",
 --             "object_list": [
---                 {"owner": "SYNODOS", "name": "VW_PRESSAO_ASSISTENCIAL"},
---                 {"owner": "SYNODOS", "name": "VW_TAXA_POR_UF"},
---                 {"owner": "SYNODOS", "name": "VW_PERFIL_DIAGNOSTICO"},
---                 {"owner": "SYNODOS", "name": "VW_OCUPACAO_REDE"},
---                 {"owner": "SYNODOS", "name": "VW_SERIE_TEMPORAL"},
---                 {"owner": "SYNODOS", "name": "VW_PERFIL_DEMOGRAFICO"},
---                 {"owner": "SYNODOS", "name": "FATO_INTERNACAO"},
---                 {"owner": "SYNODOS", "name": "DIM_TERRITORIO"},
---                 {"owner": "SYNODOS", "name": "DIM_CID10"}
+--                 {"owner": "ADMIN", "name": "VW_PRESSAO_ASSISTENCIAL"},
+--                 {"owner": "ADMIN", "name": "VW_TAXA_POR_UF"},
+--                 {"owner": "ADMIN", "name": "VW_PERFIL_DIAGNOSTICO"},
+--                 {"owner": "ADMIN", "name": "VW_OCUPACAO_REDE"},
+--                 {"owner": "ADMIN", "name": "VW_SERIE_TEMPORAL"},
+--                 {"owner": "ADMIN", "name": "VW_PERFIL_DEMOGRAFICO"},
+--                 {"owner": "ADMIN", "name": "FATO_INTERNACAO"},
+--                 {"owner": "ADMIN", "name": "DIM_TERRITORIO"},
+--                 {"owner": "ADMIN", "name": "DIM_CID10"}
 --             ]
 --         }'
 --     );
