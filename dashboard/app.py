@@ -926,7 +926,17 @@ with abas[3]:
 
     if pergunta:
         try:
-            from src.db.select_ai import oracle_disponivel, perguntar
+            from src.db.select_ai import perguntar
+
+            # Import defensivo: se o repositorio publicado estiver com
+            # dashboard e select_ai em versoes diferentes, a aba continua
+            # funcionando em modo local em vez de quebrar na cara do
+            # usuario. Ja aconteceu num deploy fora de sincronia.
+            try:
+                from src.db.select_ai import oracle_disponivel
+            except ImportError:
+                def oracle_disponivel() -> bool:
+                    return False
 
             usar_oracle = False
             if oracle_disponivel():
