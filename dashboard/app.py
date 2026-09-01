@@ -163,11 +163,26 @@ COLUNAS_LEGIVEIS = {
 }
 
 
+MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun",
+               "jul", "ago", "set", "out", "nov", "dez"]
+
+
 # ------------------------------------------------------------------ helpers
 def fmt(valor, casas: int = 0) -> str:
     """Formata numero no padrao brasileiro: 234803 -> 234.803"""
     texto = f"{valor:,.{casas}f}"
     return texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def rotulo_competencia(competencia) -> str:
+    """
+    Converte a competencia do SIH para algo legivel: 202301 -> jan/2023.
+
+    O formato AAAAMM e o padrao do DATASUS, e faz sentido para quem trabalha
+    com a base. Para o gestor que abre o painel, nao significa nada.
+    """
+    c = str(int(float(competencia)))
+    return f"{MESES_ABREV[int(c[4:6]) - 1]}/{c[:4]}"
 
 
 def titulo(texto: str, subtitulo: str = "") -> None:
@@ -262,22 +277,43 @@ st.sidebar.divider()
 df = D["analitico"]
 
 competencias = sorted(df["competencia"].astype(str).unique())
-periodo = st.sidebar.select_slider(
-    "Período (competência)",
-    options=competencias,
-    value=(competencias[0], competencias[-1]),
+# O usuario ve "jan/2023"; o filtro continua operando sobre "202301".
+rotulos_periodo = [rotulo_competencia(c) for c in competencias]
+de_rotulo = dict(zip(rotulos_periodo, competencias))
+
+periodo_rotulo = st.sidebar.select_slider(
+    "Período",
+    options=rotulos_periodo,
+    value=(rotulos_periodo[0], rotulos_periodo[-1]),
+    help="Mês de referência da internação. Arraste as pontas para "
+         "recortar o intervalo que quer analisar.",
 )
+periodo = (de_rotulo[periodo_rotulo[0]], de_rotulo[periodo_rotulo[1]])
 
 ufs = sorted(df["sg_uf"].unique())
-ufs_sel = st.sidebar.multiselect("Estados", ufs, default=ufs)
+ufs_sel = st.sidebar.multiselect(
+    "Estados", ufs, default=ufs,
+    help="Siglas das unidades federativas. Todos os 27 estados vêm "
+         "selecionados; remova os que não quiser comparar.",
+)
 
 regioes = sorted(df["regiao"].dropna().unique())
-regioes_sel = st.sidebar.multiselect("Regiões", regioes, default=regioes)
+regioes_sel = st.sidebar.multiselect(
+    "Regiões", regioes, default=regioes,
+    help="As 5 grandes regiões do IBGE. Use para comparar Norte com "
+         "Sudeste, por exemplo.",
+)
 
 diags = sorted(df["cid_grupo"].unique())
+mapa_diag = (
+    df[["cid_grupo", "descricao_curta"]]
+    .drop_duplicates().set_index("cid_grupo")["descricao_curta"].to_dict()
+)
 diags_sel = st.sidebar.multiselect(
     "Diagnósticos (CID-10)", diags, default=[],
-    help="Deixe vazio para incluir todos os diagnósticos",
+    format_func=lambda c: f"{c} — {mapa_diag.get(c, c)}",
+    help="Códigos do Capítulo V da CID-10, que reúne os transtornos "
+         "mentais e comportamentais. Deixe vazio para incluir todos.",
 )
 
 mask = (
@@ -291,7 +327,10 @@ if diags_sel:
 f = df[mask]
 
 st.sidebar.divider()
-st.sidebar.metric("Internações no filtro", fmt(len(f)))
+st.sidebar.metric(
+    "Internações no filtro", fmt(len(f)),
+    help="Quantas internações restam depois dos filtros acima.",
+)
 if len(f) < len(df):
     st.sidebar.caption(f"{len(f) / len(df) * 100:.1f}% da base completa")
 
@@ -314,6 +353,32 @@ st.caption(
     "Internações do SUS por transtornos mentais e comportamentais "
     "(CID-10, Capítulo V), integradas ao cadastro da rede e à população IBGE"
 )
+with st.expander("Como usar este painel", expanded=False):
+    st.markdown(
+        """
+**Comece pelos filtros**, na barra à esquerda. Você pode recortar por
+período, estado, região e diagnóstico. Todos os números da tela recalculam
+na hora.
+
+**As quatro abas respondem perguntas diferentes:**
+
+| Aba | Responde |
+|---|---|
+| **Panorama** | Quantas internações houve, como evoluíram e quais transtornos predominam |
+| **Território** | Onde a rede está sob maior pressão e como os estados se comparam |
+| **Rede instalada** | Quantos leitos e CAPS existem, e o quanto estão ocupados |
+| **Perguntar aos dados** | Escreva a pergunta em português e receba a resposta com o SQL usado |
+
+**Um cuidado ao ler os números:** estados grandes sempre lideram em números
+absolutos, porque têm mais habitantes. Por isso o painel usa
+**internações por 10 mil habitantes** — é o que permite comparar São Paulo
+com Roraima de forma justa.
+
+Passe o mouse sobre o ícone **?** ao lado de cada indicador para ver o que
+ele significa e como é calculado.
+        """
+    )
+
 st.write("")
 
 abas = st.tabs(
@@ -334,14 +399,39 @@ with abas[0]:
 
     with st.container(border=True):
         c = st.columns(5)
-        c[0].metric("Internações", fmt(len(f)))
-        c[1].metric("Permanência média",
-                    f"{fmt(f['qt_dias_permanencia'].mean(), 1)} dias")
-        c[2].metric("Ocupação estimada", f"{ocupacao:.0f}%")
-        c[3].metric("Taxa de mortalidade",
-                    f"{fmt(f['fl_obito'].mean() * 100, 2)}%")
-        c[4].metric("Custo total",
-                    f"R$ {fmt(f['vl_total_aih'].sum() / 1e6, 1)} mi")
+        c[0].metric(
+            "Internações", fmt(len(f)),
+            help="Número de internações hospitalares por transtornos "
+                 "mentais no período e nos estados filtrados. Cada "
+                 "internação corresponde a uma AIH (Autorização de "
+                 "Internação Hospitalar) registrada no SIH/SUS.",
+        )
+        c[1].metric(
+            "Permanência média",
+            f"{fmt(f['qt_dias_permanencia'].mean(), 1)} dias",
+            help="Quantos dias, em média, o paciente ficou internado. "
+                 "Quanto maior, mais complexos são os casos e mais tempo "
+                 "cada leito fica ocupado.",
+        )
+        c[2].metric(
+            "Ocupação estimada", f"{ocupacao:.0f}%",
+            help="Percentual da capacidade de leitos que esteve ocupada. "
+                 "Calculado dividindo o total de dias-paciente pelos "
+                 "leitos disponíveis multiplicados pelos dias do período. "
+                 "Acima de 85% indica rede próxima da saturação.",
+        )
+        c[3].metric(
+            "Taxa de mortalidade",
+            f"{fmt(f['fl_obito'].mean() * 100, 2)}%",
+            help="Percentual de internações que terminaram em óbito "
+                 "durante a permanência hospitalar.",
+        )
+        c[4].metric(
+            "Custo total",
+            f"R$ {fmt(f['vl_total_aih'].sum() / 1e6, 1)} mi",
+            help="Soma dos valores pagos pelo SUS por essas internações, "
+                 "em milhões de reais.",
+        )
 
     st.write("")
     esq, dir_ = st.columns([3, 2], gap="large")
@@ -356,10 +446,7 @@ with abas[0]:
             serie["media_movel"] = (
                 serie["internacoes"].rolling(3, min_periods=1).mean()
             )
-            serie["rotulo"] = (
-                serie["competencia"].astype(str).str[4:6] + "/"
-                + serie["competencia"].astype(str).str[2:4]
-            )
+            serie["rotulo"] = serie["competencia"].map(rotulo_competencia)
 
             variacao = (
                 serie["internacoes"].iloc[-1] / serie["internacoes"].iloc[0] - 1
@@ -453,10 +540,7 @@ with abas[0]:
         with st.container(border=True):
             if "projecao" in D and len(ufs_sel) == len(ufs):
                 proj = D["projecao"].copy()
-                proj["rotulo"] = (
-                    proj["competencia"].astype(str).str[4:6] + "/"
-                    + proj["competencia"].astype(str).str[2:4]
-                )
+                proj["rotulo"] = proj["competencia"].map(rotulo_competencia)
                 titulo(
                     "Projeção para os próximos 6 meses",
                     "Regressão com tendência e sazonalidade mensal. "
@@ -782,6 +866,25 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True,
 )
+
+with st.expander("Glossário — o que cada termo significa"):
+    st.markdown(
+        """
+| Termo | O que é |
+|---|---|
+| **SIH/SUS** | Sistema de Informações Hospitalares do SUS. Registra todas as internações pagas pelo SUS no país. |
+| **AIH** | Autorização de Internação Hospitalar. É o documento que autoriza e registra cada internação — uma AIH equivale a uma internação. |
+| **Competência** | O mês de referência do registro no SIH, no formato ano-mês. Aqui exibimos como *jan/2023*. |
+| **CNES** | Cadastro Nacional de Estabelecimentos de Saúde. Lista todos os hospitais, postos e unidades do país. |
+| **CID-10, Capítulo V** | O trecho da Classificação Internacional de Doenças que reúne os transtornos mentais e comportamentais. Todos os códigos começam com a letra F. |
+| **CAPS** | Centro de Atenção Psicossocial. É a unidade de referência da rede de saúde mental do SUS para atendimento diário, sem internação. |
+| **RAPS** | Rede de Atenção Psicossocial. O conjunto de serviços de saúde mental do SUS: CAPS, leitos em hospital geral, ambulatórios e prontos-socorros. |
+| **Permanência** | Quantos dias o paciente ficou internado. |
+| **Taxa por 10 mil habitantes** | Quantas internações ocorreram para cada 10 mil pessoas que moram no estado. Permite comparar estados de tamanhos diferentes. |
+| **Taxa de ocupação** | O quanto da capacidade de leitos foi usada. Acima de 85% indica rede saturada. |
+| **IPA** | Índice de Pressão Assistencial. Indicador criado neste projeto: combina demanda (50%), complexidade dos casos (30%) e escassez de leitos (20%) em uma nota de 0 a 100. Quanto maior, maior a prioridade de investimento. |
+        """
+    )
 
 if origem.exists():
     with st.expander("Sobre os dados exibidos nesta demonstração"):

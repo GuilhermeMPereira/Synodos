@@ -163,15 +163,42 @@ def carregar_cnes_json(cur) -> None:
     log.info("cnes_documento: %d documentos JSON", len(linhas))
 
 
-def carregar_fato(cur, mapa_estab: dict[str, int]) -> None:
+def carregar_fato(cur, mapa_estab: dict[str, int],
+                  limite: int | None = None) -> None:
     df = pd.read_parquet(
         settings.PROCESSED_DIR / "analitico_internacoes.parquet"
     )
 
-    tempo = {
-        c: i
-        for i, c in enumerate(sorted(df["competencia"].unique()), 1)
-    }
+    # A carga completa sao ~438 mil linhas pela internet, o que leva de 5 a
+    # 15 minutos. Para montar a demonstracao do Select AI rapidamente, uma
+    # amostra estratificada por UF e competencia preserva a distribuicao e
+    # carrega em menos de um minuto - os indicadores continuam coerentes.
+    if limite and limite < len(df):
+        fracao = limite / len(df)
+        # Usar o sample nativo do groupby, e nao groupby().apply(): a partir
+        # do pandas 2.2 o apply nao recebe as colunas de agrupamento, e a
+        # amostra sairia sem sg_uf e competencia.
+        df = (
+            df.groupby(["sg_uf", "competencia"], observed=True,
+                       group_keys=False)
+            .sample(frac=fracao, random_state=settings.SEED)
+            .reset_index(drop=True)
+        )
+        log.info(
+            "Carga limitada a %s linhas (amostra estratificada por UF e "
+            "competencia)", f"{len(df):,}".replace(",", "."),
+        )
+
+    # As chaves de tempo tem de vir da base COMPLETA, e nao da amostra:
+    # dim_tempo foi carregada com todas as competencias, e numerar a partir
+    # de um subconjunto deslocaria as chaves estrangeiras.
+    competencias_completas = sorted(
+        pd.read_parquet(
+            settings.PROCESSED_DIR / "analitico_internacoes.parquet",
+            columns=["competencia"],
+        )["competencia"].unique()
+    )
+    tempo = {c: i for i, c in enumerate(competencias_completas, 1)}
     territorio = pd.read_csv(
         settings.PROCESSED_DIR / "dim_territorio.csv", sep=";"
     )
@@ -228,7 +255,7 @@ def truncar(cur) -> None:
             log.warning("  nao foi possivel limpar %s: %s", tabela, exc)
 
 
-def executar(limpar_antes: bool = False) -> None:
+def executar(limpar_antes: bool = False, limite: int | None = None) -> None:
     with cursor() as cur:
         if limpar_antes:
             log.info("Limpando tabelas...")
@@ -244,7 +271,7 @@ def executar(limpar_antes: bool = False) -> None:
         carregar_cnes_json(cur)
 
         log.info("Carregando fato...")
-        carregar_fato(cur, mapa)
+        carregar_fato(cur, mapa, limite)
 
     log.info("OK: carga concluida.")
 
@@ -253,8 +280,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Carga no Oracle ADB")
     ap.add_argument("--truncar", action="store_true",
                     help="limpa as tabelas antes de carregar")
+    ap.add_argument("--limite", type=int, default=None,
+                    help="carrega apenas N internacoes, em amostra "
+                         "estratificada. Util para montar a demonstracao "
+                         "do Select AI rapidamente (ex.: --limite 50000)")
     args = ap.parse_args()
-    executar(args.truncar)
+    executar(args.truncar, args.limite)
 
 
 if __name__ == "__main__":
