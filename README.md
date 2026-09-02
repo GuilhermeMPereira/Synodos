@@ -103,33 +103,33 @@ consulta só, justamente para deixar essa ideia visível.
 
 ## O que está pronto e o que não está
 
-Achamos importante ser claro sobre isso, porque parte do projeto ficou pela
-metade dentro da janela da sprint.
+Achamos importante ser claro sobre isso, porque nem tudo que planejamos coube
+na janela da sprint.
 
 **Funcionando:**
 
 - ingestão das três fontes, cada uma no seu formato
 - tratamento com regras de qualidade auditáveis
 - integração das três fontes numa tabela analítica única
+- modelagem Oracle (`sql/01` a `sql/05`) executada e carga (`carga_oracle.py`)
+  concluída no Oracle Autonomous Database
+- Select AI habilitado no Oracle: perguntas em português traduzidas para SQL
+  por um modelo de linguagem
 - 7 indicadores de gestão, incluindo um índice composto que criamos
 - 3 modelos analíticos (clusterização, projeção e decomposição sazonal)
-- dashboard com filtros por período, estado, região e diagnóstico
-- perguntas em linguagem natural, em modo local
+- dashboard com filtros por período, estado, região e diagnóstico, publicado
+  em Streamlit Cloud (https://synodos.streamlit.app)
+- perguntas em linguagem natural também em modo local, para rodar sem
+  credenciais Oracle
 
-**Escrito mas ainda não executado:**
+O provisionamento do Autonomous Database atrasou durante a sprint e versões
+anteriores deste README refletiam esse estado intermediário. O provisionamento
+foi concluído dentro da Sprint 2, a carga foi executada e a ordem de execução
+está mais abaixo.
 
-- toda a modelagem Oracle (`sql/01` a `sql/05`) e a carga (`carga_oracle.py`)
-- o Select AI com modelo de linguagem de verdade
-
-O motivo é direto: **não conseguimos provisionar a instância do Autonomous
-Database dentro do prazo da sprint.** O código está escrito e versionado, e a
-ordem de execução está mais abaixo. O que falta é rodar contra uma instância
-real.
-
-Enquanto isso não acontece, a camada de perguntas em português funciona em modo
-local: um classificador de intenção mapeia a pergunta para um template SQL, e o
-DuckDB executa isso sobre os dados. A diferença honesta entre os dois modos é
-essa:
+A camada de perguntas em português tem dois modos. No modo local, um
+classificador de intenção mapeia a pergunta para um template SQL, e o DuckDB
+executa isso sobre os dados. A diferença honesta entre os dois modos é essa:
 
 - no **Oracle**, quem escreve o SQL é um modelo de linguagem, então ele
   responde perguntas que ninguém antecipou;
