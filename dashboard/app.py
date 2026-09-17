@@ -987,6 +987,24 @@ with abas[3]:
                     "internações, leitos, estados, diagnósticos ou custos.",
                     icon="⚠️",
                 )
+            elif origem_resposta == "fora_de_escopo":
+                # Nao devolver numero nenhum aqui e proposital. Antes, uma
+                # pergunta que o classificador nao entendia recebia os
+                # numeros gerais do panorama, com a mesma aparencia de uma
+                # resposta correta - o pior erro possivel num painel de
+                # decisao.
+                st.warning(
+                    "**Não consegui responder isso com esta base.**\n\n"
+                    "O painel cobre internações por transtornos mentais no "
+                    "SUS. Se a pergunta for sobre outro assunto, o dado não "
+                    "existe aqui — e devolver um número qualquer seria pior "
+                    "do que dizer que não sei.",
+                    icon="🤷",
+                )
+                with st.container(border=True):
+                    titulo("O que dá para perguntar")
+                    for assunto in r.get("assuntos", []):
+                        st.markdown(f"- {assunto}")
             else:
                 with st.container(border=True):
                     titulo("Resultado da consulta")

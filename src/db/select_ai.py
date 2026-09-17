@@ -225,9 +225,10 @@ CATALOGO: list[Intencao] = [
     Intencao(
         nome="pressao_assistencial",
         descricao="Ranking de estados por pressao sobre a rede",
-        padroes_fortes=[r"pressao", r"sobrecarreg", r"prioridade"],
+        padroes_fortes=[r"pressao", r"sobrecarreg", r"prioridade", r"gargalo"],
         padroes=[
             r"critic", r"investi", r"atencao", r"pior situacao",
+            r"pior", r"mais grave", r"prioriz", r"onde investir",
         ],
         sql="""
             SELECT ranking, nm_uf AS estado, regiao,
@@ -245,10 +246,12 @@ CATALOGO: list[Intencao] = [
     Intencao(
         nome="taxa_por_habitante",
         descricao="Internacoes por 10 mil habitantes por estado",
-        padroes_fortes=[r"10 ?mil", r"proporcional", r"per capita"],
+        padroes_fortes=[
+            r"10 ?mil", r"proporcional", r"per capita", r"por habitante",
+        ],
         padroes=[
-            r"por habitante", r"taxa", r"comparar estados",
-            r"maior numero de internacoes",
+            r"taxa", r"comparar estados", r"maior numero de internacoes",
+            r"relativ", r"proporcao", r"densidade",
         ],
         sql="""
             SELECT nm_uf AS estado, regiao, qt_internacoes,
@@ -262,11 +265,44 @@ CATALOGO: list[Intencao] = [
         ],
     ),
     Intencao(
+        # Volume absoluto por estado. E uma pergunta diferente da de cima:
+        # "qual estado mais interna" nao e "qual estado mais interna por
+        # habitante". Sao Paulo lidera a primeira e fica em sexto na
+        # segunda - e essa diferenca e o argumento central do projeto.
+        nome="ranking_estados",
+        descricao="Estados ordenados por volume de internacoes",
+        padroes_fortes=[
+            r"estados? com mais", r"estado que mais", r"quais estados",
+            r"ranking d[eo]s? estados", r"estados? que tem mais",
+        ],
+        padroes=[
+            r"por estado", r"mais interna", r"maior volume", r"por uf",
+            r"lista d[eo]s? estados", r"cada estado",
+        ],
+        sql="""
+            SELECT nm_uf AS estado, regiao, qt_internacoes,
+                   populacao, internacoes_por_10k_ano, permanencia_media
+            FROM taxas
+            ORDER BY qt_internacoes DESC
+        """,
+        exemplos=[
+            "Qual o estado com mais internacoes?",
+            "Quais os cinco estados que mais internam?",
+        ],
+    ),
+    Intencao(
         nome="evolucao_temporal",
         descricao="Serie temporal de internacoes",
-        padroes_fortes=[r"evolu", r"mes a mes", r"tendencia", r"serie"],
+        padroes_fortes=[
+            r"evolu", r"mes a mes", r"tendencia", r"serie",
+            r"por competencia", r"ao longo do tempo",
+        ],
         padroes=[
-            r"crescimento", r"ao longo do tempo", r"mensal", r"aumento",
+            # "periodo" ficou de fora de proposito: e generico demais e
+            # roubava "qual o total de internacoes no periodo", que e
+            # pergunta de panorama.
+            r"crescimento", r"mensal", r"aumento", r"por mes",
+            r"sazonal", r"historico", r"cresceu",
         ],
         sql="""
             SELECT CAST(CAST(competencia AS BIGINT) AS VARCHAR) AS competencia,
@@ -283,8 +319,12 @@ CATALOGO: list[Intencao] = [
         padroes_fortes=[
             r"diagnostic", r"transtorno", r"\bcid\b", r"doenca",
             r"esquizofrenia", r"bipolar", r"depress", r"alcool",
+            r"psicos", r"ansiedade", r"droga", r"patologi",
         ],
-        padroes=[r"consomem mais", r"dias de leito"],
+        padroes=[
+            r"consomem mais", r"dias de leito", r"quais? doencas",
+            r"motivo", r"causa",
+        ],
         sql="""
             SELECT cid_grupo AS cid, descricao, qt_internacoes,
                    pct_internacoes, permanencia_media,
@@ -302,6 +342,10 @@ CATALOGO: list[Intencao] = [
         descricao="Leitos, CAPS e taxa de ocupacao da rede",
         padroes_fortes=[
             r"leito", r"\bcaps\b", r"ocupacao", r"capacidade",
+            # "leitos por habitante" e pergunta de rede, nao de taxa de
+            # internacao - sem este padrao as duas empatavam em 3 pontos e
+            # a resposta saia da view errada.
+            r"leitos? por (10 ?mil )?habitante", r"densidade de leito",
         ],
         padroes=[r"rede", r"unidade", r"estabelecimento", r"hospital"],
         sql="""
@@ -322,7 +366,10 @@ CATALOGO: list[Intencao] = [
         padroes_fortes=[
             r"faixa etaria", r"idade", r"sexo", r"genero",
         ],
-        padroes=[r"perfil", r"homens", r"mulheres", r"jovens", r"idosos"],
+        padroes=[
+            r"perfil", r"homens?", r"mulheres?", r"jovens", r"idosos",
+            r"crianca", r"adolescent", r"faixa", r"quem interna",
+        ],
         sql="""
             SELECT faixa_etaria, ds_sexo AS sexo, qt_internacoes,
                    pct, permanencia_media
@@ -334,9 +381,14 @@ CATALOGO: list[Intencao] = [
     Intencao(
         nome="panorama",
         descricao="Numeros gerais consolidados",
-        padroes_fortes=[r"panorama", r"visao geral", r"consolidado"],
+        padroes_fortes=[
+            r"panorama", r"visao geral", r"consolidado",
+            r"permanencia media", r"media de permanencia",
+        ],
         padroes=[
             r"total", r"geral", r"resumo", r"quantas internacoes",
+            r"no total", r"numeros gerais", r"mortalidade", r"obito",
+            r"quanto tempo", r"media",
         ],
         sql="""
             SELECT COUNT(*)                                AS total_internacoes,
@@ -367,8 +419,23 @@ CATALOGO: list[Intencao] = [
 ]
 
 
+class ForaDeEscopo(Exception):
+    """
+    A pergunta nao corresponde a nenhuma intencao conhecida.
+
+    Existe para que o modo local possa dizer "nao sei" em vez de devolver
+    um resultado qualquer. Ver o comentario em MotorLocal.classificar.
+    """
+
+    def __init__(self, pergunta: str) -> None:
+        super().__init__(f"Pergunta fora do escopo do modo local: {pergunta}")
+        self.pergunta = pergunta
+
+
 class MotorLocal:
     """Classificador de intencao + execucao SQL real no DuckDB."""
+
+    _ufs: dict[str, tuple[str, str]] | None = None
 
     def __init__(self) -> None:
         import duckdb
@@ -393,36 +460,97 @@ class MotorLocal:
                 f"read_csv_auto('{p / arquivo}', delim=';', header=true)"
             )
 
-    def classificar(self, pergunta: str) -> tuple[Intencao, int]:
+    def classificar(self, pergunta: str) -> tuple[Intencao | None, int]:
+        """
+        Devolve a intencao vencedora, ou None quando nenhuma pontuou.
+
+        None e uma resposta legitima, nao um erro. A versao anterior caia
+        no "panorama" quando nao entendia a pergunta, e o resultado era
+        pior do que nao responder: perguntando sobre vacinas - assunto que
+        nao existe nesta base - o painel devolvia os numeros gerais de
+        internacao com cara de resposta certa. Quem olhasse rapido levaria
+        embora um numero que nao responde nada.
+        """
         alvo = normalizar(pergunta)
         pontuadas = [(i, i.pontuar(alvo)) for i in CATALOGO]
         melhor, pontos = max(pontuadas, key=lambda x: x[1])
         if pontos == 0:
-            melhor = next(i for i in CATALOGO if i.nome == "panorama")
+            return None, 0
         return melhor, pontos
+
+    def _mapa_ufs(self) -> dict[str, tuple[str, str]]:
+        """
+        {termo normalizado: (sigla, nome oficial)} para as 27 UFs.
+
+        Montado a partir da propria dimensao de territorio, e nao de uma
+        lista escrita a mao - a versao anterior tinha so os 7 estados do
+        piloto antigo, entao "quantas internacoes na Bahia" era ignorado
+        em silencio.
+        """
+        if getattr(self, "_ufs", None) is None:
+            df = self.con.execute(
+                "SELECT sg_uf, nm_uf FROM taxas"
+            ).fetchdf()
+            mapa: dict[str, tuple[str, str]] = {}
+            for _, l in df.iterrows():
+                sigla, nome = str(l["sg_uf"]).strip(), str(l["nm_uf"]).strip()
+                mapa[normalizar(nome)] = (sigla, nome)
+                mapa[normalizar(sigla)] = (sigla, nome)
+            self._ufs = mapa
+        return self._ufs
 
     def gerar_sql(self, pergunta: str) -> tuple[str, Intencao]:
         intencao, _ = self.classificar(pergunta)
+        if intencao is None:
+            raise ForaDeEscopo(pergunta)
         sql = " ".join(intencao.sql.split())
 
-        # Filtro por estado, quando a pergunta cita uma UF
+        # Filtro por estado, quando a pergunta cita uma UF.
+        #
+        # Qual valor comparar depende da view: algumas projetam
+        # "sg_uf AS estado" (sigla) e outras "nm_uf AS estado" (nome por
+        # extenso). Comparar sempre com a sigla, como a versao anterior
+        # fazia, devolvia zero linha em quase todas.
         alvo = normalizar(pergunta)
-        ufs = {
-            "sao paulo": "SP", "rio de janeiro": "RJ", "minas": "MG",
-            "espirito santo": "ES", "parana": "PR", "santa catarina": "SC",
-            "rio grande do sul": "RS",
-        }
-        for nome, sigla in ufs.items():
-            if nome in alvo:
-                coluna = "sg_uf" if "sg_uf" in sql or "FROM ocupacao" in sql \
-                    else "estado"
-                if " ORDER BY" in sql:
-                    cabeca, cauda = sql.split(" ORDER BY", 1)
-                    sql = (
-                        f"{cabeca} WHERE {coluna} = '{sigla}' "
-                        f"ORDER BY{cauda}"
-                    ) if "WHERE" not in cabeca else sql
-                break
+        if "sg_uf AS estado" in sql:
+            coluna, usa_sigla = "estado", True
+        elif "nm_uf AS estado" in sql:
+            coluna, usa_sigla = "estado", False
+        else:
+            # panorama: consulta a tabela analitica direto, onde a coluna
+            # e sg_uf. Sem este caso, "quantas internacoes na Bahia"
+            # devolvia o total do Brasil inteiro.
+            coluna, usa_sigla = "sg_uf", True
+
+        for termo, (sigla, nome) in sorted(
+            self._mapa_ufs().items(), key=lambda x: -len(x[0])
+        ):
+            achou = (re.search(rf"\b{re.escape(termo)}\b", alvo)
+                     if len(termo) <= 2 else termo in alvo)
+            if not achou:
+                continue
+            valor = sigla if usa_sigla else nome
+            if "WHERE" in sql:
+                pass
+            elif " ORDER BY" in sql:
+                cabeca, cauda = sql.split(" ORDER BY", 1)
+                sql = f"{cabeca} WHERE {coluna} = '{valor}' ORDER BY{cauda}"
+            else:
+                sql = f"{sql} WHERE {coluna} = '{valor}'"
+            break
+
+        # Inversao da ordem quando a pergunta pede o extremo oposto.
+        # "Qual estado tem MENOS leitos por habitante" e uma das sugestoes
+        # do painel: sem isto a consulta ordenava por ocupacao decrescente
+        # e a narrativa respondia outra coisa.
+        if re.search(r"\bmen[ou][sr]\b|\bmenores\b|\bpior\w*\b", alvo):
+            if intencao.nome == "rede_leitos":
+                sql = sql.replace(
+                    "ORDER BY taxa_ocupacao_pct DESC",
+                    "ORDER BY leitos_por_10k_hab ASC",
+                )
+            elif " DESC" in sql:
+                sql = sql.replace(" DESC", " ASC")
 
         # Limite quando a pergunta pede "os N primeiros"
         m = re.search(
@@ -476,6 +604,15 @@ def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
             f"habitantes por ano, totalizando "
             f"{fmt_int(linha['qt_internacoes'])} internações."
         )
+    if intencao.nome == "ranking_estados":
+        return (
+            f"{linha['estado']} lidera em volume absoluto, com "
+            f"{fmt_int(linha['qt_internacoes'])} internações "
+            f"({fmt_dec(linha['internacoes_por_10k_ano'])} por 10 mil "
+            f"habitantes ao ano). Volume alto costuma acompanhar população "
+            f"alta — para comparar estados de tamanhos diferentes, pergunte "
+            f"pela taxa por habitante."
+        )
     if intencao.nome == "diagnosticos":
         return (
             f"O diagnóstico mais frequente é {linha['descricao']} "
@@ -495,10 +632,11 @@ def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
         )
     if intencao.nome == "rede_leitos":
         return (
-            f"{linha['estado']} apresenta a maior ocupação estimada: "
-            f"{fmt_dec(linha['taxa_ocupacao_pct'], 1)}%, com "
-            f"{fmt_int(linha['qt_leitos'])} leitos e "
-            f"{int(linha['qt_caps'])} CAPS."
+            f"{linha['estado']}: {fmt_dec(linha['leitos_por_10k_hab'])} "
+            f"leitos por 10 mil habitantes, "
+            f"{fmt_int(linha['qt_leitos'])} leitos no total, "
+            f"{int(linha['qt_caps'])} CAPS e ocupação estimada de "
+            f"{fmt_dec(linha['taxa_ocupacao_pct'], 1)}%."
         )
     if intencao.nome == "custo":
         return (
@@ -514,10 +652,16 @@ def narrar(df: pd.DataFrame, intencao: Intencao) -> str:
             f"({fmt_dec(linha['pct'], 1)}% do total)."
         )
     if intencao.nome == "panorama":
+        # O recorte muda quando a pergunta cita um estado. Dizer
+        # "em 1 estados" entregaria que o filtro existe mas a frase nao
+        # foi pensada para ele.
+        n_estados = int(linha["estados"])
+        escopo = (f"{n_estados} estados" if n_estados > 1
+                  else "no recorte consultado")
         return (
             f"Foram {fmt_int(linha['total_internacoes'])} internações em "
-            f"{int(linha['competencias'])} competências e "
-            f"{int(linha['estados'])} estados, com permanência média de "
+            f"{int(linha['competencias'])} competências, {escopo}, com "
+            f"permanência média de "
             f"{fmt_dec(linha['permanencia_media'], 1)} dias e custo total de "
             f"R$ {fmt_moeda(linha['custo_total'])}."
         )
@@ -558,7 +702,26 @@ def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
         erro = None
 
     motor = MotorLocal()
-    df, sql, intencao = motor.perguntar(pergunta)
+    try:
+        df, sql, intencao = motor.perguntar(pergunta)
+    except ForaDeEscopo:
+        # Dizer "nao sei" e a resposta certa aqui. Ver ForaDeEscopo.
+        return {
+            "modo": "local",
+            "origem": "fora_de_escopo",
+            "pergunta": pergunta,
+            "intencao": None,
+            "sql": None,
+            "resultado": pd.DataFrame(),
+            "narrativa": (
+                "Não consegui transformar essa pergunta em uma consulta "
+                "sobre esta base. Ou o assunto não está nos dados, ou a "
+                "pergunta precisa ser mais específica."
+            ),
+            "assuntos": [i.descricao for i in CATALOGO],
+            "erro_oracle": erro,
+        }
+
     return {
         "modo": "local",
         "origem": "dados",
