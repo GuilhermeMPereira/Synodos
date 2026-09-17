@@ -24,6 +24,17 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import settings  # noqa: E402
 
+
+def diagnostico() -> bool:
+    """
+    Mostrar ou nao as mensagens tecnicas.
+
+    Lido com getattr de proposito: se este arquivo subir para o deploy
+    antes do config/settings.py, a ausencia da flag nao pode derrubar a
+    pagina. Na duvida, esconde - e o comportamento seguro para o publico.
+    """
+    return bool(getattr(settings, "DIAGNOSTICO", False))
+
 # ------------------------------------------------------------------ paleta
 # Identidade visual do Synodos: preto e ambar, herdada do prototipo da
 # Sprint 1. E um sistema monocromatico com um unico acento, entao a
@@ -947,7 +958,7 @@ with abas[3]:
             # nao de quem consulta. No app publicado ele so confundiria:
             # o visitante nao tem como saber o que escolher.
             usar_oracle = gemini_disponivel() or oracle_disponivel()
-            if usar_oracle and settings.DIAGNOSTICO:
+            if usar_oracle and diagnostico():
                 usar_oracle = st.toggle(
                     "Consultar o Oracle Autonomous Database", value=True,
                     help="Ligado, um modelo de linguagem escreve o SQL e o "
@@ -983,7 +994,7 @@ with abas[3]:
             # O texto cru do erro e para quem desenvolve. Quem consulta ve
             # a resposta; se algo falhou, ja caiu no modo local e o numero
             # continua correto.
-            if settings.DIAGNOSTICO and r.get("erro_oracle"):
+            if diagnostico() and r.get("erro_oracle"):
                 st.warning(
                     "O Oracle não respondeu, então a consulta foi feita "
                     f"pelo motor local. Detalhe: {r['erro_oracle'][:300]}"
@@ -1060,7 +1071,7 @@ with abas[3]:
                             "acima veio da execução deste SQL."
                         )
         except Exception as exc:  # noqa: BLE001
-            if settings.DIAGNOSTICO:
+            if diagnostico():
                 st.error(f"Não foi possível responder: {exc}")
             else:
                 st.error(
