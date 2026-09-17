@@ -49,7 +49,17 @@ def conectar():
         )
 
     log.info("Conectando ao Oracle (%s)...", settings.ORACLE_DSN)
-    return oracledb.connect(**parametros)
+    conexao = oracledb.connect(**parametros)
+
+    # Teto de tempo para qualquer chamada nesta conexao.
+    #
+    # Sem isto, uma chamada ao DBMS_CLOUD_AI.GENERATE que nunca volta -
+    # porque o servico de Generative AI nao respondeu, ou a conta nao tem
+    # direito a ele - deixa a aplicacao pendurada para sempre, com o
+    # spinner girando e nenhuma mensagem na tela. Com o teto, a chamada
+    # falha, o painel cai para o modo local e diz o que aconteceu.
+    conexao.call_timeout = settings.ORACLE_CALL_TIMEOUT_MS
+    return conexao
 
 
 @contextmanager

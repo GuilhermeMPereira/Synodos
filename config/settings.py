@@ -60,6 +60,13 @@ ORACLE_DSN = _segredo("ORACLE_DSN", "synodosdb_high")
 ORACLE_WALLET_DIR = _segredo("ORACLE_WALLET_DIR")
 ORACLE_WALLET_PASSWORD = _segredo("ORACLE_WALLET_PASSWORD")
 
+# Teto de tempo, em milissegundos, para qualquer chamada ao banco.
+# Existe por causa do Select AI: a geracao de SQL depende de um servico
+# externo (OCI Generative AI) e, quando ele nao responde, a chamada fica
+# pendurada sem erro. 45 segundos e generoso para a geracao e curto o
+# bastante para nao travar a aplicacao.
+ORACLE_CALL_TIMEOUT_MS = int(os.getenv("ORACLE_CALL_TIMEOUT_MS", "45000"))
+
 # ---------------------------------------------------------------- select ai
 # Provedor padrao: "oci" (OCI Generative AI). Autentica pelo resource
 # principal do proprio Autonomous Database, sem chave de API paga. Exige
