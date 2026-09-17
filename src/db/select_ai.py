@@ -754,7 +754,7 @@ def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
         try:
             return perguntar_gemini_oracle(pergunta)
         except Exception as exc:  # noqa: BLE001
-            log.warning("Gemini+Oracle falhou (%s). Tentando Select AI.", exc)
+            log.warning("Gemini+Oracle falhou (%s). Caindo para o modo local.", exc)
             erro = str(exc)
 
     # So tentamos o Select AI se o caminho acima nao estiver configurado.

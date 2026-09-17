@@ -153,19 +153,22 @@ Esquema disponivel:
 # ===========================================================================
 # 2. A chamada ao modelo
 # ===========================================================================
-def _modelo_disponivel(chave: str) -> str:
+def _versao(nome: str) -> tuple[float, int]:
     """
-    Descobre um modelo valido, em vez de assumir um nome fixo.
+    Extrai o numero de versao do nome do modelo, para ordenar.
 
-    Os nomes dos modelos do Gemini mudam com o tempo, e um nome invalido
-    devolve 404 no meio da demonstracao. Aqui tentamos o configurado e, se
-    ele nao existir, perguntamos ao proprio servico quais existem.
+    'gemini-3.6-flash' -> (3.6, 1). O segundo item desempata a favor do
+    modelo estavel: 'preview' e 'exp' perdem para a versao publicada.
     """
+    m = re.search(r"(\d+\.?\d*)", nome)
+    v = float(m.group(1)) if m else 0.0
+    estavel = 0 if ("preview" in nome or "exp" in nome) else 1
+    return (v, estavel)
+
+
+def _listar_modelos(chave: str) -> list[str]:
+    """Modelos que suportam generateContent, do mais novo para o mais antigo."""
     import requests
-
-    preferido = settings.GEMINI_MODEL
-    if preferido:
-        return preferido
 
     resp = requests.get(
         f"{API_BASE}/models",
@@ -178,14 +181,39 @@ def _modelo_disponivel(chave: str) -> str:
         for m in resp.json().get("models", [])
         if "generateContent" in m.get("supportedGenerationMethods", [])
     ]
+    # "flash" primeiro: mais rapido e com cota gratuita maior. Dentro de
+    # cada grupo, versao mais alta primeiro - a lista da API nao vem
+    # ordenada, e pegar o primeiro item trouxe um modelo ja descontinuado.
+    flash = [m for m in modelos if "flash" in m and "thinking" not in m]
+    resto = [m for m in modelos if m not in flash]
+    return (sorted(flash, key=_versao, reverse=True)
+            + sorted(resto, key=_versao, reverse=True))
+
+
+def _modelo_disponivel(chave: str) -> str:
+    """Modelo configurado no .env, ou o mais recente que a conta enxerga."""
+    if settings.GEMINI_MODEL:
+        return settings.GEMINI_MODEL
+
+    modelos = _listar_modelos(chave)
     if not modelos:
         raise RuntimeError("nenhum modelo com generateContent disponivel")
+    log.info("Modelo Gemini escolhido automaticamente: %s", modelos[0])
+    return modelos[0]
 
-    # Preferimos os "flash": mais rapidos e com cota gratuita maior.
-    flash = [m for m in modelos if "flash" in m and "thinking" not in m]
-    escolhido = (flash or modelos)[0]
-    log.info("Modelo Gemini escolhido automaticamente: %s", escolhido)
-    return escolhido
+
+def _modelo_sugerido(mensagem: str) -> str | None:
+    """
+    Le a sugestao que o proprio erro 404 traz.
+
+    Quando um modelo e descontinuado, a API responde algo como "no longer
+    available to new users. Please update your code to use
+    models/gemini-3.6-flash". Aproveitar essa dica evita que a aplicacao
+    quebre quando o catalogo do Google muda - que foi exatamente o que
+    aconteceu na primeira execucao deste modulo.
+    """
+    m = re.search(r"use\s+models/([A-Za-z0-9.\-]+)", mensagem)
+    return m.group(1) if m else None
 
 
 def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
@@ -199,7 +227,6 @@ def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
             "https://aistudio.google.com/apikey e coloque no .env."
         )
 
-    modelo = _modelo_disponivel(chave)
     corpo = {
         "system_instruction": {
             "parts": [{"text": INSTRUCAO.format(esquema=esquema)}]
@@ -209,15 +236,28 @@ def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
         "generationConfig": {"temperature": 0, "maxOutputTokens": 800},
     }
 
-    resp = requests.post(
-        f"{API_BASE}/models/{modelo}:generateContent",
-        headers={
-            "x-goog-api-key": chave,
-            "Content-Type": "application/json",
-        },
-        data=json.dumps(corpo),
-        timeout=settings.GEMINI_TIMEOUT_S,
-    )
+    def _chamar(modelo: str):
+        return requests.post(
+            f"{API_BASE}/models/{modelo}:generateContent",
+            headers={
+                "x-goog-api-key": chave,
+                "Content-Type": "application/json",
+            },
+            data=json.dumps(corpo),
+            timeout=settings.GEMINI_TIMEOUT_S,
+        )
+
+    modelo = _modelo_disponivel(chave)
+    resp = _chamar(modelo)
+
+    # Modelo descontinuado: a propria resposta costuma dizer qual usar.
+    # Tentamos uma vez mais com a sugestao, em vez de falhar na cara do
+    # usuario por causa de uma troca de catalogo do Google.
+    if resp.status_code == 404:
+        sugerido = _modelo_sugerido(resp.text)
+        if sugerido and sugerido != modelo:
+            log.warning("Modelo %s indisponivel; usando %s.", modelo, sugerido)
+            modelo, resp = sugerido, _chamar(sugerido)
 
     if resp.status_code == 429:
         raise RuntimeError(
@@ -226,7 +266,8 @@ def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
         )
     if resp.status_code >= 400:
         raise RuntimeError(
-            f"Gemini devolveu {resp.status_code}: {resp.text[:300]}"
+            f"Gemini devolveu {resp.status_code} com o modelo '{modelo}': "
+            f"{resp.text[:300]}"
         )
 
     dados = resp.json()
