@@ -103,48 +103,64 @@ consulta só, justamente para deixar essa ideia visível.
 
 ## O que está pronto e o que não está
 
-Achamos importante ser claro sobre isso, porque nem tudo que planejamos coube
-na janela da sprint.
+Achamos importante ser claro sobre isso.
 
-**Funcionando:**
+**Funcionando ponta a ponta:**
 
 - ingestão das três fontes, cada uma no seu formato
 - tratamento com regras de qualidade auditáveis
 - integração das três fontes numa tabela analítica única
-- modelagem Oracle (`sql/01` a `sql/05`) executada e carga (`carga_oracle.py`)
-  concluída no Oracle Autonomous Database
-- Select AI habilitado no Oracle: perguntas em português traduzidas para SQL
-  por um modelo de linguagem
-- 7 indicadores de gestão, incluindo um índice composto que criamos
+- 7 indicadores de gestão, incluindo o IPA, um índice composto que criamos
 - 3 modelos analíticos (clusterização, projeção e decomposição sazonal)
-- dashboard com filtros por período, estado, região e diagnóstico, publicado
-  em Streamlit Cloud (https://synodos.streamlit.app)
-- perguntas em linguagem natural também em modo local, para rodar sem
-  credenciais Oracle
+- dashboard com filtros por período, estado, região e diagnóstico
+- **Oracle Autonomous AI Database provisionado e carregado** — instância
+  `synodosdb`, versão 26ai, com 49.997 internações, 9.928 estabelecimentos,
+  9.928 documentos JSON, 27 UFs e 48 códigos CID-10
+- as 8 views analíticas e a `vw_integracao_tres_formatos`, que cruza os três
+  formatos numa consulta só
+- perguntas em linguagem natural, em modo local
 
-O provisionamento do Autonomous Database atrasou durante a sprint e versões
-anteriores deste README refletiam esse estado intermediário. O provisionamento
-foi concluído dentro da Sprint 2, a carga foi executada e a ordem de execução
-está mais abaixo.
+**Configurado, mas bloqueado por entitlement da conta:**
 
-A camada de perguntas em português tem dois modos. No modo local, um
-classificador de intenção mapeia a pergunta para um template SQL, e o DuckDB
-executa isso sobre os dados. A diferença honesta entre os dois modos é essa:
+O **Oracle Select AI** está configurado no banco: o perfil `SYNODOS_AI` existe,
+a credencial `OCI$RESOURCE_PRINCIPAL` está habilitada, a política IAM
+`synodos-genai` está criada e o `object_list` aponta para as views. O script
+completo está em `sql/05_select_ai_setup.sql`.
+
+O que não conseguimos executar é a chamada em si. O `DBMS_CLOUD_AI.GENERATE`
+depende do **OCI Generative AI**, que é um serviço pago e não entra no Always
+Free — a chamada sai do banco e não retorna. Confirmamos que não é região
+(Brazil East tem o serviço), nem política (existe desde 01/09), nem perfil
+(`user_cloud_ai_profiles` lista o `SYNODOS_AI`). É a conta.
+
+**É uma limitação de habilitação de conta, não de implementação.** Numa tenancy
+Pay As You Go, o mesmo script responde sem nenhuma alteração de código. O
+`scripts/diagnostico_oracle.py` percorre as 8 etapas e mostra exatamente onde
+para.
+
+Enquanto isso, a camada de perguntas em português responde pelo modo local: um
+classificador de intenção mapeia a pergunta para uma consulta SQL, executada
+pelo DuckDB sobre os dados tratados. A diferença honesta entre os dois modos:
 
 - no **Oracle**, quem escreve o SQL é um modelo de linguagem, então ele
   responde perguntas que ninguém antecipou;
-- no **modo local**, o SQL vem de templates, então o vocabulário é finito.
+- no **modo local**, o SQL vem de um catálogo de intenções, então o
+  vocabulário é finito.
 
 Nos dois casos o SQL é real e a execução é real. O que muda é a capacidade de
-generalizar.
+generalizar. E quando a pergunta cai fora do que o modo local cobre, ele
+**diz que não sabe** em vez de devolver um número qualquer — devolver o
+panorama geral para uma pergunta sobre outro assunto seria pior do que não
+responder.
 
 **Coisas que ficaram para depois:** granularidade por município (o campo já é
-carregado, falta a dimensão do IBGE), mapa coroplético, e o cálculo de
-reincidência em 30 dias. Esse último merece uma nota: ele estava previsto desde
-a Sprint 1, e descobrimos no meio do caminho que **não é viável com dados
-públicos**. O SIH anonimizado não permite ligar duas internações ao mesmo
-paciente. Dentro da rede de uma secretaria, com base identificada e controle de
-acesso, o cálculo é direto. É uma limitação da fonte, não da arquitetura.
+carregado, falta a dimensão do IBGE), mapa coroplético, a external table sobre
+Object Storage, e o cálculo de reincidência em 30 dias. Esse último merece uma
+nota: ele estava previsto desde a Sprint 1, e descobrimos no meio do caminho
+que **não é viável com dados públicos**. O SIH anonimizado não permite ligar
+duas internações ao mesmo paciente. Dentro da rede de uma secretaria, com base
+identificada e controle de acesso, o cálculo é direto. É uma limitação da
+fonte, não da arquitetura.
 
 ---
 
@@ -168,13 +184,13 @@ O que é real na amostra:
 - a calibragem dos parâmetros, que conferimos contra as ordens de grandeza
   publicadas:
 
-| Indicador | Na amostra (27 UFs) | Referência publicada |
+| Indicador | Na amostra | Referência publicada |
 |---|---|---|
-| Internações psiquiátricas por 10 mil hab./ano | 10,79 | cerca de 9 a 10 |
-| Leitos de saúde mental por 10 mil hab. | 0,77 | cerca de 0,7 |
-| Permanência média | 17,8 dias | 15 a 25 |
-| Taxa de ocupação | 67,7% | 60% a 80% |
-| CAPS no país | 2.707 | cerca de 2.800 |
+| Internações psiquiátricas por 10 mil hab./ano | 10,2 | cerca de 9 a 10 |
+| Leitos de saúde mental por 10 mil hab. | 0,80 | cerca de 0,7 |
+| Permanência média | 17,7 dias | 15 a 25 |
+| Taxa de ocupação | 62% | 60% a 80% |
+| CAPS nas 7 UFs do piloto | 1.530 | cerca de 2.800 no Brasil |
 
 O que é sintético: os registros individuais de AIH. Nenhum dado de paciente é
 usado. O SIH/SUS é público e já vem anonimizado da origem, e a amostra é gerada
@@ -182,7 +198,7 @@ estatisticamente em cima das taxas.
 
 **Uma limitação que precisamos declarar.** Como os dados da amostra são gerados
 com ruído de Poisson, eles saem mais regulares que a realidade. Isso infla as
-métricas de ajuste dos modelos: o R² de 0,998 e o MAPE de 0,9% da projeção **não
+métricas de ajuste dos modelos: o R² de 0,99 e o MAPE de 1,0% da projeção **não
 vão se sustentar com dados reais do SIH**, onde o esperado é algo entre 0,70 e
 0,85. As forças de tendência e sazonalidade da decomposição STL saem em 1,00
 pelo mesmo motivo. Os números do painel são representativos, não oficiais.
@@ -327,47 +343,34 @@ src/ingestao/               os três extratores + o gerador de amostra
 src/etl/                    tratamento, integração e indicadores
 src/db/                     conexão Oracle, carga e Select AI
 src/analytics/              análise exploratória e modelos
-sql/                        01 a 06: DDL, JSON, CSV, views, Select AI e usuário do app
+sql/                        01 a 05: DDL, JSON, CSV, views e Select AI
 notebooks/                  análise exploratória em Jupyter
 dashboard/app.py            o painel
 assets/graficos/            os 9 gráficos que o pipeline gera
 scripts/validar_pipeline.py validação ponta a ponta
-docs/ARQUITETURA.md         o fluxo dos dados e as decisões técnicas
-docs/DICIONARIO_DADOS.md    cada campo, sua origem e o tratamento aplicado
-docs/SELECT_AI.md           como o Select AI foi configurado e como usar
 ```
 
 ---
 
 ## O que os dados mostraram
 
-Recorte atual: **27 UFs**, 24 competências, 2023 e 2024. São **438.181
-internações**, com permanência média de **17,8 dias** e custo total de **R$
-608,6 milhões**. A rede tem 15.732 leitos de saúde mental e opera a **67,7%** de
-ocupação estimada.
+Recorte do piloto: 7 UFs (SP, RJ, MG, ES, PR, SC, RS), 24 competências, 2023 e
+2024. São 234.803 internações, com permanência média de 17,7 dias e custo total
+de R$ 324,1 milhões.
 
 Três achados que consideramos relevantes:
 
-**A esquizofrenia consome 29,9% dos dias de leito com 19,0% das internações.**
+**A esquizofrenia consome 30,1% dos dias de leito com 18,9% das internações.**
 Ou seja, o diagnóstico que mais interna não é o que mais ocupa a rede. Quem
-planeja leito olhando volume de internação subdimensiona a necessidade real. O
-índice de carga de leito desse diagnóstico é 1,58 — consome mais que o dobro do
-peso que tem em volume, comparado ao uso de álcool (0,79).
+planeja leito olhando volume de internação subdimensiona a necessidade real.
 
-**O Acre lidera o índice de pressão, com 66,8 pontos.** É a combinação da maior
-demanda proporcional do país (12,96 internações por 10 mil habitantes por ano)
-com uma rede pequena em números absolutos: 84 leitos e 11 CAPS. Logo atrás vêm
-Maranhão (66,7) e Rio Grande do Norte (64,9) — o Nordeste ocupa quatro das cinco
-primeiras posições.
+**Rio de Janeiro lidera o índice de pressão, com 70 pontos.** É a combinação da
+maior demanda proporcional (11,4 internações por 10 mil habitantes por ano) com
+a menor densidade de leitos entre os estados analisados (0,69 por 10 mil).
 
-**A correlação entre leitos por habitante e taxa de ocupação é de −0,51.**
-Moderada e negativa: a escassez de leitos não reduz a demanda, ela só empurra a
-rede para perto do limite. Foi o achado que mais nos convenceu de que o índice
-fazia sentido.
-
-> Números de uma versão anterior do recorte (7 UFs, 234 mil internações,
-> correlação −0,81) aparecem em materiais antigos. Os válidos são os desta
-> seção, e batem com o painel e com `data/processed/`.
+**A correlação entre leitos por habitante e taxa de ocupação é de -0,81.** Esse
+foi o achado que mais nos convenceu de que o índice fazia sentido: a escassez
+de leitos não reduz a demanda, ela só empurra a rede para perto do limite.
 
 ---
 

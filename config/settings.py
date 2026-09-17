@@ -78,6 +78,17 @@ SELECT_AI_REGION = _segredo("SELECT_AI_REGION", "sa-saopaulo-1")
 SELECT_AI_MODEL = os.getenv("SELECT_AI_MODEL", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# ------------------------------------------------- gemini (geracao no app)
+# Caminho alternativo quando o banco nao consegue chamar o modelo sozinho -
+# o caso da instancia Always Free, que nao completa saida HTTP. Aqui quem
+# chama o modelo e a aplicacao; o SQL gerado continua sendo executado pelo
+# Oracle. Ver src/db/gemini_sql.py.
+# Chave gratuita em https://aistudio.google.com/apikey
+GEMINI_API_KEY = _segredo("GEMINI_API_KEY")
+# Vazio = descobre sozinho um modelo valido, consultando o servico.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "")
+GEMINI_TIMEOUT_S = int(os.getenv("GEMINI_TIMEOUT_S", "40"))
+
 # ---------------------------------------------------------------- ingestao
 # Competencias no formato AAAAMM. Padrao: 24 meses de 2023-2024.
 COMPETENCIA_INICIO = os.getenv("COMPETENCIA_INICIO", "202301")

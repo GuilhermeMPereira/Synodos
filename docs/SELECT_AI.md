@@ -23,6 +23,36 @@ resposta pedindo o SQL.
 
 ---
 
+## Situação atual — leia antes de tudo
+
+A configuração está **completa e verificável no banco**: o perfil `SYNODOS_AI`
+existe, a credencial `OCI$RESOURCE_PRINCIPAL` está habilitada, a política IAM
+`synodos-genai` está criada e o `object_list` aponta para as views.
+
+O que **não executa** é a chamada. `DBMS_CLOUD_AI.GENERATE` depende do **OCI
+Generative AI**, um serviço pago que não entra no Always Free: a requisição sai
+do banco e não retorna — pendura, sem erro.
+
+Descartamos as outras causas, nesta ordem:
+
+| Hipótese | Verificação | Resultado |
+|---|---|---|
+| Região sem o serviço | Brazil East na lista de regiões do OCI GenAI | tem o serviço |
+| Política IAM ausente | Policies → `synodos-genai`, criada em 01/09/2026 | existe |
+| Perfil não criado | `SELECT profile_name FROM user_cloud_ai_profiles` | `SYNODOS_AI` |
+| Credencial ausente | `all_credentials` | `OCI$RESOURCE_PRINCIPAL` |
+| Banco parado | console OCI | `Available` |
+| Views ausentes | contagem nas 8 views | todas respondem |
+
+Sobra o entitlement da conta. **É limitação de habilitação, não de
+implementação:** numa tenancy Pay As You Go o mesmo script responde sem
+nenhuma alteração de código.
+
+Para reproduzir o diagnóstico: `python scripts/diagnostico_oracle.py` percorre
+as oito etapas e para na primeira que falhar, dizendo o que fazer.
+
+---
+
 ## Configuração aplicada
 
 | Item | Valor |
@@ -129,7 +159,15 @@ mãos para exibir ao gestor.
 caímos na ação `chat`. A interface rotula a resposta como vinda do conhecimento
 do modelo, **não da base**.
 
-**3. Oracle indisponível.** Cai no modo local sem quebrar a aplicação.
+**3. Oracle indisponível ou sem resposta.** Cai no modo local sem quebrar a
+aplicação. Toda conexão tem `call_timeout` de 45 segundos — sem esse teto, a
+chamada que não volta deixaria o painel girando o spinner para sempre.
+
+**4. Pergunta fora do escopo, no modo local.** O classificador diz que **não
+sabe** e lista os assuntos que cobre. A versão anterior caía no panorama geral
+quando não entendia a pergunta, e devolvia 438 mil internações para quem
+perguntou sobre vacina — com aparência de resposta certa. Num painel de
+decisão, esse é o pior erro possível.
 
 A distinção entre 1 e 2 é deliberada. Se todas as respostas parecessem iguais, o
 gestor não saberia quando confiar no número. É justamente por existir o caso
@@ -206,3 +244,4 @@ tenha gerado.
 | `ORA-20401: authorization failed` | A política IAM não está valendo, ou ainda não propagou. |
 | Credencial não aparece | Rode `ENABLE_RESOURCE_PRINCIPAL` como ADMIN. |
 | Resposta sem sentido | Confirme `"comments": "true"` e que os `COMMENT ON` do `sql/01` rodaram. |
+| **A chamada pendura, sem erro** | O OCI Generative AI não respondeu. Em conta Free Tier é o esperado — ver "Situação atual", no topo. |

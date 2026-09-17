@@ -17,7 +17,7 @@ do que ficou planejado.
 | **Persistência** | Esquema estrela + coluna JSON | Oracle Autonomous AI Database 26ai | **Provisionado e carregado** |
 | **Analítica** | Views curadas e indicadores | SQL, Python | Implementado |
 | **Modelos** | Clusterização, projeção, decomposição | scikit-learn, statsmodels, numpy | Implementado |
-| **Linguagem natural** | Pergunta em português → SQL → resposta | Oracle Select AI | **Funcionando** |
+| **Linguagem natural** | Pergunta em português → SQL → resposta | Oracle Select AI | Configurado; execução bloqueada pelo Free Tier |
 | **Consumo** | Painel do gestor | Streamlit, Plotly | Implementado e publicado |
 
 ---
@@ -185,7 +185,20 @@ linguagem, capaz de responder perguntas nunca antecipadas; no local o
 vocabulário é finito. O SQL e a execução são reais nos dois casos.
 
 **Provedor:** OCI Generative AI com resource principal
-(`OCI$RESOURCE_PRINCIPAL`), sem chave de API paga, na região `sa-saopaulo-1`.
+(`OCI$RESOURCE_PRINCIPAL`), na região `sa-saopaulo-1`.
+
+**Situação atual, declarada.** A configuração está completa no banco — perfil
+`SYNODOS_AI`, credencial habilitada, política IAM `synodos-genai` criada, o
+`object_list` apontando para as views. O que não executa é a chamada:
+`DBMS_CLOUD_AI.GENERATE` depende do OCI Generative AI, que é pago e não entra
+no Always Free, e a requisição sai do banco sem retornar. Descartamos região
+(Brazil East tem o serviço), política (existe) e perfil (`user_cloud_ai_profiles`
+lista). É entitlement de conta. O `scripts/diagnostico_oracle.py` percorre as
+oito etapas e mostra onde para.
+
+Como consequência, toda conexão leva `call_timeout` de 45 segundos
+(`config/settings.py`): sem esse teto, uma chamada que não volta deixaria a
+aplicação pendurada sem mensagem nenhuma.
 
 ---
 
@@ -233,7 +246,7 @@ O usuário do app tem apenas `SELECT`, e apenas sobre as views.
 |---|---|---|
 | Ingestão com dados oficiais | Código pronto, não executado | Rodar `ingest_sih.py` e `ingest_cnes.py` em rede com acesso ao DATASUS |
 | External table sobre CSV | Codificada em `sql/03`, não executada | Exige bucket no OCI Object Storage; hoje a dimensão é carregada via Python |
-| Select AI no app publicado | Funciona local; publicado roda em modo local | Configurar os Secrets do Streamlit com o usuário só-leitura |
+| Execução do Select AI | Perfil, credencial e política prontos; a chamada não retorna | Depende do OCI Generative AI, serviço pago fora do Always Free. Numa tenancy Pay As You Go funciona sem mudar código |
 | Granularidade municipal | Agregado por UF | O campo `co_municipio_residencia` já é carregado; falta a dimensão de municípios do IBGE |
 | Mapa coroplético | Não implementado | Depende da malha territorial do IBGE (GeoJSON) |
 | Reincidência em 30 dias | Não implementado | **Inviável com dados públicos** — ver abaixo |

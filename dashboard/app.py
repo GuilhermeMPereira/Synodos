@@ -937,15 +937,20 @@ with abas[3]:
             except ImportError:
                 def oracle_disponivel() -> bool:
                     return False
+            try:
+                from src.db.select_ai import gemini_disponivel
+            except ImportError:
+                def gemini_disponivel() -> bool:
+                    return False
 
             usar_oracle = False
-            if oracle_disponivel():
+            if gemini_disponivel() or oracle_disponivel():
                 usar_oracle = st.toggle(
-                    "Usar Oracle Select AI", value=True,
-                    help="Ligado, a pergunta vai ao Oracle Autonomous "
-                         "Database: um modelo de linguagem escreve o SQL e "
-                         "o banco executa. Desligado, responde pelo motor "
-                         "local de demonstração.",
+                    "Consultar o Oracle Autonomous Database", value=True,
+                    help="Ligado, um modelo de linguagem escreve o SQL e o "
+                         "Oracle executa sobre os dados carregados. "
+                         "Desligado, responde pelo motor local de "
+                         "demonstração, sobre os arquivos tratados.",
                 )
 
             with st.spinner("Consultando..."):
@@ -953,7 +958,14 @@ with abas[3]:
 
             origem_resposta = r.get("origem", "dados")
 
-            if r["modo"] == "oracle" and origem_resposta == "dados":
+            if r["modo"] == "gemini_oracle" and origem_resposta == "dados":
+                st.caption(
+                    "🟢 **Modelo de linguagem + Oracle Autonomous Database** "
+                    "— o modelo escreveu a consulta a partir da pergunta e "
+                    "do dicionário de dados; o banco executou. Os números "
+                    "abaixo vêm dos dados."
+                )
+            elif r["modo"] == "oracle" and origem_resposta == "dados":
                 st.caption(
                     "🟢 **Oracle Select AI** — a pergunta virou SQL, e o "
                     "banco executou. Os números abaixo vêm dos dados."
@@ -1014,9 +1026,18 @@ with abas[3]:
                     )
 
                 with st.expander("Ver o SQL que foi gerado e executado",
-                                 expanded=(r["modo"] == "oracle")):
+                                 expanded=r["modo"] in ("oracle",
+                                                        "gemini_oracle")):
                     st.code(r["sql"], language="sql")
-                    if r["modo"] == "oracle":
+                    if r["modo"] == "gemini_oracle":
+                        st.caption(
+                            "Escrito por um **modelo de linguagem** a partir "
+                            "da pergunta em português e do dicionário de "
+                            "dados do banco, e executado no **Oracle "
+                            "Autonomous Database**. Os números vêm do banco, "
+                            "não do modelo — por isso a resposta é auditável."
+                        )
+                    elif r["modo"] == "oracle":
                         st.caption(
                             "Gerado pelo **Oracle Select AI** a partir da "
                             "pergunta em português e executado no Autonomous "

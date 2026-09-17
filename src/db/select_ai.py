@@ -674,6 +674,68 @@ def oracle_disponivel() -> bool:
     return bool(settings.ORACLE_PASSWORD and settings.ORACLE_DSN)
 
 
+def gemini_disponivel() -> bool:
+    """Ha chave do Gemini e conexao Oracle para executar o SQL gerado?"""
+    return bool(settings.GEMINI_API_KEY) and oracle_disponivel()
+
+
+def perguntar_gemini_oracle(pergunta: str) -> dict:
+    """
+    Modelo gera o SQL na aplicacao; o Oracle executa.
+
+    E o caminho que funciona quando a instancia nao consegue chamar o modelo
+    sozinha (ver src/db/gemini_sql.py). O que importa se mantem: quem
+    escreve a consulta e um modelo de linguagem, e quem produz os numeros e
+    o Autonomous Database.
+    """
+    from src.db.gemini_sql import descrever_esquema, gerar_sql_gemini
+    from src.db.oracle_conn import cursor
+
+    with cursor() as cur:
+        esquema = descrever_esquema(cur)
+        sql = gerar_sql_gemini(pergunta, esquema)
+
+        if sql.strip().upper().startswith("FORA_DE_ESCOPO"):
+            return {
+                "modo": "gemini_oracle",
+                "origem": "fora_de_escopo",
+                "pergunta": pergunta,
+                "intencao": None,
+                "sql": None,
+                "resultado": pd.DataFrame(),
+                "narrativa": (
+                    "Não consegui transformar essa pergunta em uma consulta "
+                    "sobre esta base. Ou o assunto não está nos dados, ou a "
+                    "pergunta precisa ser mais específica."
+                ),
+                "assuntos": [i.descricao for i in CATALOGO],
+                "erro_oracle": None,
+            }
+
+        if not sql.lower().lstrip().startswith(("select", "with")):
+            raise RuntimeError(f"o modelo nao devolveu uma consulta: {sql[:120]}")
+
+        cur.execute(sql)
+        colunas = [d[0].lower() for d in cur.description]
+        linhas = [
+            tuple(_ler_lob(v) for v in linha) for linha in cur.fetchall()
+        ]
+        df = pd.DataFrame(linhas, columns=colunas)
+
+    return {
+        "modo": "gemini_oracle",
+        "origem": "dados",
+        "pergunta": pergunta,
+        "intencao": None,
+        "sql": sql,
+        "resultado": df,
+        "narrativa": (
+            f"{len(df)} linha(s) retornadas pelo Oracle Autonomous Database."
+        ),
+        "erro_oracle": None,
+    }
+
+
 def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
     """
     Interface unica de perguntas em linguagem natural.
@@ -682,7 +744,23 @@ def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
     falhar (banco parado, perfil ausente, sem rede), cai para o modo local
     sem quebrar a aplicacao. O campo "modo" no retorno diz qual respondeu.
     """
-    if not forcar_local and oracle_disponivel():
+    erro = None
+
+    # Caminho preferido quando ha chave do Gemini: o modelo gera o SQL aqui
+    # e o Oracle executa. Tentado antes do Select AI porque, nesta conta, o
+    # Select AI nao completa a chamada - e esperar o timeout dele a cada
+    # pergunta so faria o usuario aguardar por nada.
+    if not forcar_local and gemini_disponivel():
+        try:
+            return perguntar_gemini_oracle(pergunta)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Gemini+Oracle falhou (%s). Tentando Select AI.", exc)
+            erro = str(exc)
+
+    # So tentamos o Select AI se o caminho acima nao estiver configurado.
+    # Encadear os dois faria o usuario esperar o timeout do Select AI depois
+    # de o Gemini ja ter falhado - dois minutos de espera para nada.
+    elif not forcar_local and oracle_disponivel():
         try:
             r = perguntar_oracle(pergunta)
             return {
@@ -698,8 +776,6 @@ def perguntar(pergunta: str, forcar_local: bool = False) -> dict:
         except Exception as exc:  # noqa: BLE001
             log.warning("Select AI indisponivel (%s). Usando modo local.", exc)
             erro = str(exc)
-    else:
-        erro = None
 
     motor = MotorLocal()
     try:
