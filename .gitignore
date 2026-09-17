@@ -26,3 +26,6 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+
+# Secrets do deploy - nunca versionar
+streamlit_secrets_PARA_COLAR.toml

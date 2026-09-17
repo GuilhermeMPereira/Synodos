@@ -217,7 +217,20 @@ def _modelo_sugerido(mensagem: str) -> str | None:
 
 
 def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
-    """Manda pergunta + esquema ao Gemini e devolve o SQL, limpo."""
+    """
+    Manda pergunta + esquema ao Gemini e devolve o SQL, limpo.
+
+    Insiste antes de desistir. Os modelos gratuitos do Gemini devolvem 503
+    ("high demand") com alguma frequencia, e sao picos de segundos - falhar
+    na primeira tentativa jogaria o usuario para o modo local sem
+    necessidade, bem no meio de uma demonstracao.
+
+    A escada de tentativas e: o modelo escolhido, com algumas repeticoes e
+    espera crescente; se ele continuar sobrecarregado, o proximo modelo da
+    lista. So depois disso desistimos.
+    """
+    import time
+
     import requests
 
     chave = settings.GEMINI_API_KEY
@@ -247,38 +260,69 @@ def gerar_sql_gemini(pergunta: str, esquema: str) -> str:
             timeout=settings.GEMINI_TIMEOUT_S,
         )
 
-    modelo = _modelo_disponivel(chave)
-    resp = _chamar(modelo)
+    candidatos = [_modelo_disponivel(chave)]
+    ultimo_erro = ""
 
-    # Modelo descontinuado: a propria resposta costuma dizer qual usar.
-    # Tentamos uma vez mais com a sugestao, em vez de falhar na cara do
-    # usuario por causa de uma troca de catalogo do Google.
-    if resp.status_code == 404:
-        sugerido = _modelo_sugerido(resp.text)
-        if sugerido and sugerido != modelo:
-            log.warning("Modelo %s indisponivel; usando %s.", modelo, sugerido)
-            modelo, resp = sugerido, _chamar(sugerido)
+    for modelo in candidatos:
+        for tentativa in range(settings.GEMINI_TENTATIVAS):
+            resp = _chamar(modelo)
 
-    if resp.status_code == 429:
-        raise RuntimeError(
-            "cota gratuita do Gemini esgotada por agora. Espere alguns "
-            "minutos ou gere outra chave."
-        )
-    if resp.status_code >= 400:
-        raise RuntimeError(
-            f"Gemini devolveu {resp.status_code} com o modelo '{modelo}': "
-            f"{resp.text[:300]}"
-        )
+            if resp.status_code == 200:
+                dados = resp.json()
+                try:
+                    texto = dados["candidates"][0]["content"]["parts"][0]["text"]
+                except (KeyError, IndexError) as exc:
+                    raise RuntimeError(
+                        "resposta do Gemini em formato inesperado: "
+                        f"{str(dados)[:300]}"
+                    ) from exc
+                return limpar(texto)
 
-    dados = resp.json()
-    try:
-        texto = dados["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError) as exc:
-        raise RuntimeError(
-            f"resposta do Gemini em formato inesperado: {str(dados)[:300]}"
-        ) from exc
+            # Modelo descontinuado: a propria resposta diz qual usar.
+            if resp.status_code == 404:
+                sugerido = _modelo_sugerido(resp.text)
+                if sugerido and sugerido not in candidatos:
+                    log.warning("Modelo %s indisponivel; tentando %s.",
+                                modelo, sugerido)
+                    candidatos.append(sugerido)
+                ultimo_erro = f"404 em '{modelo}'"
+                break
 
-    return limpar(texto)
+            # Sobrecarga momentanea: espera e tenta de novo.
+            if resp.status_code in (429, 500, 503):
+                ultimo_erro = f"{resp.status_code} em '{modelo}'"
+                if tentativa < settings.GEMINI_TENTATIVAS - 1:
+                    espera = 1.5 * (tentativa + 1)
+                    log.info("Gemini %s; repetindo em %.1fs (%d/%d).",
+                             resp.status_code, espera,
+                             tentativa + 1, settings.GEMINI_TENTATIVAS)
+                    time.sleep(espera)
+                    continue
+                break
+
+            # Erro de verdade (chave invalida, requisicao malformada):
+            # repetir nao ajuda.
+            raise RuntimeError(
+                f"Gemini devolveu {resp.status_code} com o modelo "
+                f"'{modelo}': {resp.text[:300]}"
+            )
+
+        # Esgotou as tentativas neste modelo. Se ainda nao ha alternativa
+        # na fila, busca a lista completa e acrescenta as proximas.
+        if modelo is candidatos[-1]:
+            try:
+                for outro in _listar_modelos(chave):
+                    if outro not in candidatos:
+                        candidatos.append(outro)
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+
+    raise RuntimeError(
+        f"o Gemini nao respondeu depois de tentar {len(candidatos)} "
+        f"modelo(s). Ultimo erro: {ultimo_erro}. Isso costuma ser pico de "
+        f"demanda e passa em alguns minutos."
+    )
 
 
 def limpar(sql: str) -> str:

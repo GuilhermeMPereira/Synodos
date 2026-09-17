@@ -943,8 +943,11 @@ with abas[3]:
                 def gemini_disponivel() -> bool:
                     return False
 
-            usar_oracle = False
-            if gemini_disponivel() or oracle_disponivel():
+            # O botao de alternar o modo e ferramenta de quem desenvolve,
+            # nao de quem consulta. No app publicado ele so confundiria:
+            # o visitante nao tem como saber o que escolher.
+            usar_oracle = gemini_disponivel() or oracle_disponivel()
+            if usar_oracle and settings.DIAGNOSTICO:
                 usar_oracle = st.toggle(
                     "Consultar o Oracle Autonomous Database", value=True,
                     help="Ligado, um modelo de linguagem escreve o SQL e o "
@@ -958,27 +961,32 @@ with abas[3]:
 
             origem_resposta = r.get("origem", "dados")
 
-            if r["modo"] == "gemini_oracle" and origem_resposta == "dados":
-                st.caption(
-                    "🟢 **Modelo de linguagem + Oracle Autonomous Database** "
-                    "— o modelo escreveu a consulta a partir da pergunta e "
-                    "do dicionário de dados; o banco executou. Os números "
-                    "abaixo vêm dos dados."
-                )
-            elif r["modo"] == "oracle" and origem_resposta == "dados":
-                st.caption(
-                    "🟢 **Oracle Select AI** — a pergunta virou SQL, e o "
-                    "banco executou. Os números abaixo vêm dos dados."
-                )
+            # Uma linha de procedencia, sempre. O gestor precisa saber de
+            # onde veio o numero - isso e informacao, nao diagnostico.
+            if origem_resposta == "dados":
+                if r["modo"] in ("gemini_oracle", "oracle"):
+                    st.caption(
+                        "🟢 Consulta gerada a partir da sua pergunta e "
+                        "executada no **Oracle Autonomous Database**."
+                    )
+                else:
+                    st.caption(
+                        "🟢 Consulta executada sobre a base tratada do "
+                        "painel."
+                    )
             elif r["modo"] == "oracle":
                 st.caption(
-                    "🔵 **Oracle Select AI** — pergunta conceitual, "
-                    "respondida pelo modelo de linguagem."
+                    "🔵 Pergunta conceitual, respondida pelo modelo de "
+                    "linguagem."
                 )
-            elif r.get("erro_oracle"):
+
+            # O texto cru do erro e para quem desenvolve. Quem consulta ve
+            # a resposta; se algo falhou, ja caiu no modo local e o numero
+            # continua correto.
+            if settings.DIAGNOSTICO and r.get("erro_oracle"):
                 st.warning(
                     "O Oracle não respondeu, então a consulta foi feita "
-                    f"pelo motor local. Detalhe: {r['erro_oracle'][:200]}"
+                    f"pelo motor local. Detalhe: {r['erro_oracle'][:300]}"
                 )
 
             if r.get("narrativa"):
@@ -1052,7 +1060,13 @@ with abas[3]:
                             "acima veio da execução deste SQL."
                         )
         except Exception as exc:  # noqa: BLE001
-            st.error(f"Não foi possível responder: {exc}")
+            if settings.DIAGNOSTICO:
+                st.error(f"Não foi possível responder: {exc}")
+            else:
+                st.error(
+                    "Não foi possível responder agora. Tente novamente em "
+                    "alguns instantes, ou reformule a pergunta."
+                )
 
 
 # ------------------------------------------------------------------ rodape

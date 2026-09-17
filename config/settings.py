@@ -59,6 +59,9 @@ ORACLE_PASSWORD = _segredo("ORACLE_PASSWORD")
 ORACLE_DSN = _segredo("ORACLE_DSN", "synodosdb_high")
 ORACLE_WALLET_DIR = _segredo("ORACLE_WALLET_DIR")
 ORACLE_WALLET_PASSWORD = _segredo("ORACLE_WALLET_PASSWORD")
+# Wallet inteira em base64, para o deploy em nuvem - onde nao ha pasta e a
+# wallet nao pode ser versionada. Ver wallet_em_disco() em oracle_conn.py.
+ORACLE_WALLET_B64 = _segredo("ORACLE_WALLET_B64")
 
 # Teto de tempo, em milissegundos, para qualquer chamada ao banco.
 # Existe por causa do Select AI: a geracao de SQL depende de um servico
@@ -88,6 +91,17 @@ GEMINI_API_KEY = _segredo("GEMINI_API_KEY")
 # Vazio = descobre sozinho um modelo valido, consultando o servico.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "")
 GEMINI_TIMEOUT_S = int(os.getenv("GEMINI_TIMEOUT_S", "40"))
+# Repeticoes quando o modelo devolve 503 ("high demand"). Os modelos
+# gratuitos congestionam por alguns segundos; desistir na primeira jogaria
+# a pergunta para o modo local sem necessidade.
+GEMINI_TENTATIVAS = int(os.getenv("GEMINI_TENTATIVAS", "3"))
+
+# ------------------------------------------------------------------ interface
+# Mensagens de diagnostico (qual provedor respondeu, texto cru do erro,
+# botao de alternar o modo) so aparecem com isto ligado. Desligado - que e
+# o padrao, e o que vale no app publicado - o visitante ve a resposta, e
+# nao o encanamento. Ligue com DIAGNOSTICO=1 para depurar.
+DIAGNOSTICO = os.getenv("DIAGNOSTICO", "").strip().lower() in ("1", "true", "sim")
 
 # ---------------------------------------------------------------- ingestao
 # Competencias no formato AAAAMM. Padrao: 24 meses de 2023-2024.

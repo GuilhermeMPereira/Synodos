@@ -17,6 +17,41 @@ from config import settings  # noqa: E402
 log = logging.getLogger("oracle_conn")
 
 
+def wallet_em_disco() -> str:
+    """
+    Caminho da wallet, materializando-a quando ela vier codificada.
+
+    No deploy em nuvem nao existe pasta de wallet: o Streamlit Community
+    Cloud so clona o repositorio, e a wallet nunca pode ser versionada -
+    ela da acesso ao banco. A saida e guardar o zip da wallet em base64
+    como secret e reconstruir a pasta em tempo de execucao, num diretorio
+    temporario que morre com o processo.
+
+    Em maquina local nada disso acontece: ORACLE_WALLET_DIR aponta para a
+    pasta baixada do console OCI e o resto e ignorado.
+    """
+    if settings.ORACLE_WALLET_DIR and Path(settings.ORACLE_WALLET_DIR).is_dir():
+        return settings.ORACLE_WALLET_DIR
+
+    if not settings.ORACLE_WALLET_B64:
+        return ""
+
+    import base64
+    import tempfile
+    import zipfile
+    from io import BytesIO
+
+    destino = Path(tempfile.gettempdir()) / "synodos_wallet"
+    if not (destino / "tnsnames.ora").exists():
+        destino.mkdir(parents=True, exist_ok=True)
+        bruto = base64.b64decode(settings.ORACLE_WALLET_B64)
+        with zipfile.ZipFile(BytesIO(bruto)) as z:
+            z.extractall(destino)
+        log.info("Wallet reconstruida em %s", destino)
+
+    return str(destino)
+
+
 def conectar():
     """Abre uma conexao com o Autonomous Database."""
     try:
@@ -39,11 +74,12 @@ def conectar():
     }
 
     # Conexao TLS mutua via wallet (padrao do Autonomous Database)
-    if settings.ORACLE_WALLET_DIR:
+    wallet = wallet_em_disco()
+    if wallet:
         parametros.update(
             {
-                "config_dir": settings.ORACLE_WALLET_DIR,
-                "wallet_location": settings.ORACLE_WALLET_DIR,
+                "config_dir": wallet,
+                "wallet_location": wallet,
                 "wallet_password": settings.ORACLE_WALLET_PASSWORD,
             }
         )
